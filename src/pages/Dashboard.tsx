@@ -1,6 +1,8 @@
-import Header from "@/components/Header";
+
+import UserHeader from "@/components/UserHeader";
 import StatCards from "@/components/StatCards";
 import LocationMap from "@/components/LocationMap";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChartContainer } from "@/components/ui/chart";
@@ -65,10 +67,101 @@ const locationTypes = [
   { name: "Shopping", value: 5 }
 ];
 
+// Role-specific dashboard components
+const AdminOnlySection = () => (
+  <Card className="mt-6">
+    <CardHeader>
+      <CardTitle>Admin Controls</CardTitle>
+      <CardDescription>Advanced features only available to administrators</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+          <Settings className="h-6 w-6 mb-1" />
+          <span>System Settings</span>
+        </Button>
+        <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+          <Shield className="h-6 w-6 mb-1" />
+          <span>Security Controls</span>
+        </Button>
+        <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
+          <Database className="h-6 w-6 mb-1" />
+          <span>Database Management</span>
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const ManagerSection = () => (
+  <Card className="mt-6">
+    <CardHeader>
+      <CardTitle>Operations Dashboard</CardTitle>
+      <CardDescription>Tools for location and user management</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="border border-border rounded-lg p-4">
+            <h3 className="text-lg font-medium">Pending Reviews</h3>
+            <p className="text-3xl font-bold mt-2">24</p>
+            <p className="text-sm text-muted-foreground">Awaiting approval</p>
+          </div>
+          <div className="border border-border rounded-lg p-4">
+            <h3 className="text-lg font-medium">New Locations</h3>
+            <p className="text-3xl font-bold mt-2">7</p>
+            <p className="text-sm text-muted-foreground">Added this week</p>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const UserSection = () => (
+  <Card className="mt-6">
+    <CardHeader>
+      <CardTitle>Your Activity</CardTitle>
+      <CardDescription>Your recent interactions with the system</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <ul className="space-y-3">
+        <li className="flex items-center justify-between border-b border-border pb-2">
+          <div>
+            <p className="font-medium">Viewed location details</p>
+            <p className="text-sm text-muted-foreground">Central Park Café</p>
+          </div>
+          <p className="text-xs text-muted-foreground">5 mins ago</p>
+        </li>
+        <li className="flex items-center justify-between border-b border-border pb-2">
+          <div>
+            <p className="font-medium">Searched locations</p>
+            <p className="text-sm text-muted-foreground">"restaurants near downtown"</p>
+          </div>
+          <p className="text-xs text-muted-foreground">Yesterday</p>
+        </li>
+        <li className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">Updated profile</p>
+            <p className="text-sm text-muted-foreground">Changed notification settings</p>
+          </div>
+          <p className="text-xs text-muted-foreground">2 days ago</p>
+        </li>
+      </ul>
+    </CardContent>
+  </Card>
+);
+
+// Import missing components
+import { Button } from "@/components/ui/button";
+import { Shield, Database } from "lucide-react";
+
 const Dashboard = () => {
+  const { user } = useAuth();
+  
   return (
     <div className="space-y-6 p-6">
-      <Header title="Dashboard" />
+      <UserHeader title="Dashboard" />
       
       <StatCards />
       
@@ -132,6 +225,11 @@ const Dashboard = () => {
           </Tabs>
         </Card>
       </div>
+      
+      {/* Role-specific content */}
+      {user?.role === "admin" && <AdminOnlySection />}
+      {user?.role === "manager" && <ManagerSection />}
+      {user?.role === "user" && <UserSection />}
     </div>
   );
 };

@@ -16,7 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, UserCheck, UserX } from "lucide-react";
+import { MoreHorizontal, UserCheck, UserX, Eye } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface User {
   id: string;
@@ -76,8 +77,13 @@ const mockUsers: User[] = [
   },
 ];
 
-const UserTable = () => {
+interface UserTableProps {
+  readOnly?: boolean;
+}
+
+const UserTable = ({ readOnly = false }: UserTableProps) => {
   const [users, setUsers] = useState<User[]>(mockUsers);
+  const { user: currentUser } = useAuth();
 
   const getRoleBadge = (role: User['role']) => {
     switch (role) {
@@ -93,6 +99,8 @@ const UserTable = () => {
   };
 
   const toggleUserBlock = (userId: string) => {
+    if (readOnly) return;
+    
     setUsers(users.map(user => {
       if (user.id === userId) {
         return {
@@ -102,6 +110,14 @@ const UserTable = () => {
       }
       return user;
     }));
+  };
+
+  // Prevent blocking other admins or yourself
+  const canToggleBlock = (userToToggle: User) => {
+    if (userToToggle.role === 'admin') {
+      return false; // Can't block admins
+    }
+    return true;
   };
 
   return (
@@ -135,20 +151,25 @@ const UserTable = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => toggleUserBlock(user.id)}>
-                      {user.role === 'blocked' ? (
-                        <>
-                          <UserCheck className="mr-2 h-4 w-4" />
-                          <span>Unblock User</span>
-                        </>
-                      ) : (
-                        <>
-                          <UserX className="mr-2 h-4 w-4" />
-                          <span>Block User</span>
-                        </>
-                      )}
+                    {!readOnly && canToggleBlock(user) && (
+                      <DropdownMenuItem onClick={() => toggleUserBlock(user.id)}>
+                        {user.role === 'blocked' ? (
+                          <>
+                            <UserCheck className="mr-2 h-4 w-4" />
+                            <span>Unblock User</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="mr-2 h-4 w-4" />
+                            <span>Block User</span>
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem>
+                      <Eye className="mr-2 h-4 w-4" />
+                      <span>View Details</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>View Details</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
