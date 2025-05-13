@@ -1,10 +1,21 @@
-
 import Header from "@/components/Header";
 import StatCards from "@/components/StatCards";
 import LocationMap from "@/components/LocationMap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LineChart, BarChart } from "@/components/ui/chart";
+import { ChartContainer } from "@/components/ui/chart";
+import { 
+  ResponsiveContainer,
+  LineChart as RechartsLineChart, 
+  Line, 
+  XAxis, 
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  BarChart as RechartsBarChart,
+  Bar
+} from "recharts";
 
 // Sample data for charts
 const locationData = [
@@ -88,26 +99,34 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="pt-4">
               <TabsContent value="requests" className="mt-0">
-                <LineChart
-                  data={chartData}
-                  categories={["requests", "users"]}
-                  index="name"
-                  colors={["blue", "green"]}
-                  valueFormatter={(value) => `${value.toLocaleString()}`}
-                  yAxisWidth={50}
-                  height={300}
-                />
+                <ChartContainer config={{
+                  requests: { label: "Requests", color: "#3b82f6" },
+                  users: { label: "Users", color: "#22c55e" }
+                }}>
+                  <RechartsLineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis width={50} />
+                    <Tooltip formatter={(value) => `${value.toLocaleString()}`} />
+                    <Legend />
+                    <Line type="monotone" dataKey="requests" stroke="#3b82f6" strokeWidth={2} />
+                    <Line type="monotone" dataKey="users" stroke="#22c55e" strokeWidth={2} />
+                  </RechartsLineChart>
+                </ChartContainer>
               </TabsContent>
               <TabsContent value="locations" className="mt-0">
-                <BarChart
-                  data={locationTypes}
-                  index="name"
-                  categories={["value"]}
-                  colors={["purple"]}
-                  valueFormatter={(value) => `${value} locations`}
-                  yAxisWidth={50}
-                  height={300}
-                />
+                <ChartContainer config={{
+                  value: { label: "Locations", color: "#a855f7" }
+                }}>
+                  <RechartsBarChart data={locationTypes} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis width={50} />
+                    <Tooltip formatter={(value) => `${value} locations`} />
+                    <Legend />
+                    <Bar dataKey="value" fill="#a855f7" />
+                  </RechartsBarChart>
+                </ChartContainer>
               </TabsContent>
             </CardContent>
           </Tabs>
