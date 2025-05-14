@@ -108,6 +108,7 @@ const TemplateMessageConfig = () => {
     try {
       const botApi = new TelegramBotApi({ token: botToken });
       const currentTemplate = templates[activeTab as keyof typeof templates];
+      // Fix: Remove the 'locations' property and just send the template message
       const response = await botApi.sendMessage({
         chat_id: testChatId,
         text: currentTemplate.message,
