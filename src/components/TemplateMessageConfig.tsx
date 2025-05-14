@@ -125,7 +125,7 @@ const TemplateMessageConfig = () => {
                 placeholder="Enter the message users will see when they use /location"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Use {{locations}} as a placeholder for the list of locations.
+                Use {{'{{'}}locations{{'}}'}} as a placeholder for the list of locations.
               </p>
             </div>
           </TabsContent>
