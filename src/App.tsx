@@ -11,6 +11,7 @@ import Locations from "./pages/Locations";
 import NotFound from "./pages/NotFound";
 import Sidebar from "./components/Sidebar";
 import { AuthProvider, useAuth, Permission } from "./contexts/AuthContext";
+import TemplateMessageConfig from "./components/TemplateMessageConfig";
 
 const queryClient = new QueryClient();
 
@@ -82,9 +83,18 @@ const AppRoutes = () => {
       } />
       <Route path="/settings" element={
         <DashboardLayout requiredPermission="viewSettings">
-          <div className="p-6">
+          <div className="p-6 space-y-6">
             <h1 className="text-2xl font-bold">Settings</h1>
-            <p className="text-muted-foreground mt-2">Settings page is under construction.</p>
+            <p className="text-muted-foreground">Configure your application settings and bot templates.</p>
+            
+            <div className="grid grid-cols-1 gap-6">
+              <TemplateMessageConfig />
+              
+              <div className="border border-border rounded-lg p-6">
+                <h2 className="text-xl font-semibold mb-4">General Settings</h2>
+                <p className="text-muted-foreground">Additional settings are under construction.</p>
+              </div>
+            </div>
           </div>
         </DashboardLayout>
       } />

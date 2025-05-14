@@ -1,4 +1,3 @@
-
 import UserHeader from "@/components/UserHeader";
 import StatCards from "@/components/StatCards";
 import LocationMap from "@/components/LocationMap";
@@ -19,7 +18,7 @@ import {
   Bar
 } from "recharts";
 
-// Import missing components
+// Import components
 import { Button } from "@/components/ui/button";
 import { Settings, Shield, Database } from "lucide-react";
 
@@ -155,10 +154,6 @@ const UserSection = () => (
     </CardContent>
   </Card>
 );
-
-// Import missing components
-import { Button } from "@/components/ui/button";
-import { Shield, Database } from "lucide-react";
 
 const Dashboard = () => {
   const { user } = useAuth();
