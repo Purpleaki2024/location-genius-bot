@@ -102,8 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
         setIsAuthenticated(true);
+        console.log("Restored user session:", parsedUser.username);
       } catch (error) {
         console.error("Failed to parse saved user", error);
         localStorage.removeItem("user");
@@ -113,31 +115,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const login = async (username: string, password: string): Promise<boolean> => {
     // The authentication logic
+    console.log("Login attempt:", username);
+    
     if (password !== "password") {
-      toast.error("Invalid credentials");
+      console.log("Password mismatch");
       return false;
     }
     
     // Find user by username
-    const foundUser = sampleUsers.find(u => u.username === username);
+    const foundUser = sampleUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
     
     if (foundUser) {
+      console.log("User found:", foundUser);
       setUser(foundUser);
       setIsAuthenticated(true);
       localStorage.setItem("user", JSON.stringify(foundUser));
-      toast.success(`Welcome back, ${foundUser.username}!`);
-      return true;
-    } else if (username === "admin") {
-      // Fallback for original "admin" user
-      const adminUser = sampleUsers[0];
-      setUser(adminUser);
-      setIsAuthenticated(true);
-      localStorage.setItem("user", JSON.stringify(adminUser));
-      toast.success("Welcome back, admin!");
       return true;
     }
     
-    toast.error("User not found");
+    console.log("User not found");
     return false;
   };
   

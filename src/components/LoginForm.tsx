@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 const LoginForm = () => {
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("password"); // Default to 'password' for easier testing
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -20,15 +20,17 @@ const LoginForm = () => {
     setIsLoading(true);
     
     try {
+      console.log("Attempting login with:", { username, password });
       const success = await login(username, password);
+      console.log("Login result:", success);
+      
       if (success) {
+        toast.success(`Welcome back, ${username}!`);
         navigate("/dashboard");
       } else {
-        // Add explicit error message if login fails
         toast.error("Login failed. Please check your credentials.");
       }
     } catch (error) {
-      // Add error handling to catch any exceptions
       console.error("Login error:", error);
       toast.error("An error occurred during login. Please try again.");
     } finally {
@@ -36,10 +38,11 @@ const LoginForm = () => {
     }
   };
 
-  // Pre-fill password function to make testing easier
+  // Pre-fill user selection to make testing easier
   const handleUserSelect = (selectedUsername: string) => {
     setUsername(selectedUsername);
-    setPassword("password"); // Auto-fill the password for convenience
+    setPassword("password"); // All test users have this password
+    toast.info(`Selected user: ${selectedUsername} (password: password)`);
   };
 
   return (
@@ -76,8 +79,8 @@ const LoginForm = () => {
         </form>
         
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <p>Available test users (all with password "password"):</p>
-          <div className="flex justify-center gap-2 mt-2">
+          <p className="mb-2">Available test users (all with password "password"):</p>
+          <div className="flex justify-center gap-2">
             <Button variant="outline" size="sm" onClick={() => handleUserSelect("admin")}>
               Admin
             </Button>
