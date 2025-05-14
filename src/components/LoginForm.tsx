@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const LoginForm = () => {
   const [username, setUsername] = useState("");
@@ -22,10 +23,23 @@ const LoginForm = () => {
       const success = await login(username, password);
       if (success) {
         navigate("/dashboard");
+      } else {
+        // Add explicit error message if login fails
+        toast.error("Login failed. Please check your credentials.");
       }
+    } catch (error) {
+      // Add error handling to catch any exceptions
+      console.error("Login error:", error);
+      toast.error("An error occurred during login. Please try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Pre-fill password function to make testing easier
+  const handleUserSelect = (selectedUsername: string) => {
+    setUsername(selectedUsername);
+    setPassword("password"); // Auto-fill the password for convenience
   };
 
   return (
@@ -64,13 +78,13 @@ const LoginForm = () => {
         <div className="mt-6 text-center text-sm text-muted-foreground">
           <p>Available test users (all with password "password"):</p>
           <div className="flex justify-center gap-2 mt-2">
-            <Button variant="outline" size="sm" onClick={() => setUsername("admin")}>
+            <Button variant="outline" size="sm" onClick={() => handleUserSelect("admin")}>
               Admin
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setUsername("manager")}>
+            <Button variant="outline" size="sm" onClick={() => handleUserSelect("manager")}>
               Manager
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setUsername("user")}>
+            <Button variant="outline" size="sm" onClick={() => handleUserSelect("user")}>
               User
             </Button>
           </div>

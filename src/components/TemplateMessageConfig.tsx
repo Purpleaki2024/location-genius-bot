@@ -1,301 +1,226 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { toast } from "sonner";
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Save, Send, Settings } from 'lucide-react';
-import { TelegramBotApi } from '@/utils/telegramBotApi';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+// Define the form schema
+const templateSchema = z.object({
+  name: z.string().min(2, {
+    message: "Template name must be at least 2 characters.",
+  }),
+  content: z.string().min(10, {
+    message: "Message content must be at least 10 characters.",
+  }),
+});
 
-// Initial template data
-const defaultTemplates = {
-  start: {
-    title: "/start Command",
-    message: "Welcome to our location service! Use /location to find places near you."
+type TemplateFormValues = z.infer<typeof templateSchema>;
+
+// Sample templates
+const defaultTemplates = [
+  {
+    id: "1",
+    name: "Welcome Message",
+    content: "Welcome to our service! We're glad to have you here. How can we assist you today?",
+    lastUsed: "2023-12-10",
   },
-  location: {
-    title: "/location Command",
-    message: "Here are the locations near you: {{locations}}"
-  }
-};
+  {
+    id: "2",
+    name: "Location Request",
+    content: "To provide you with the best service, could you please share your current location?",
+    lastUsed: "2023-12-15",
+  },
+  {
+    id: "3",
+    name: "Thank You",
+    content: "Thank you for using our service. We appreciate your trust and look forward to serving you again!",
+    lastUsed: "2023-12-18",
+  },
+];
 
 const TemplateMessageConfig = () => {
   const [templates, setTemplates] = useState(defaultTemplates);
-  const [activeTab, setActiveTab] = useState('start');
-  const [botToken, setBotToken] = useState('');
-  const [testChatId, setTestChatId] = useState('');
-  const [botStatus, setBotStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  
-  // Handle save template
-  const handleSaveTemplate = () => {
-    // Here you would typically save to a database
-    // For now, we'll just show a success toast
-    toast.success(`Template for /${activeTab} updated successfully`);
-  };
-  
-  // Handle template message change
-  const handleMessageChange = (value: string) => {
-    setTemplates(prev => ({
-      ...prev,
-      [activeTab]: {
-        ...prev[activeTab as keyof typeof prev],
-        message: value
-      }
-    }));
-  };
-  
-  // Handle template title change
-  const handleTitleChange = (value: string) => {
-    setTemplates(prev => ({
-      ...prev,
-      [activeTab]: {
-        ...prev[activeTab as keyof typeof prev],
-        title: value
-      }
-    }));
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Initialize form
+  const form = useForm<TemplateFormValues>({
+    resolver: zodResolver(templateSchema),
+    defaultValues: {
+      name: "",
+      content: "",
+    },
+  });
+
+  // Handle form submission
+  const onSubmit = (values: TemplateFormValues) => {
+    // Add new template
+    const newTemplate = {
+      id: (templates.length + 1).toString(),
+      name: values.name,
+      content: values.content,
+      lastUsed: "Never",
+    };
+    
+    setTemplates([...templates, newTemplate]);
+    setIsDialogOpen(false);
+    form.reset();
+    toast.success("Template created successfully!");
   };
 
-  // Test Telegram bot connection
-  const testBotConnection = async () => {
-    if (!botToken) {
-      toast.error('Please enter a bot token');
-      return;
-    }
-
-    setIsConnecting(true);
-    setBotStatus('idle');
-
-    try {
-      const botApi = new TelegramBotApi({ token: botToken });
-      const response = await botApi.testConnection();
-
-      if (response.ok) {
-        setBotStatus('success');
-        toast.success('Bot connection successful!');
-        localStorage.setItem('telegram_bot_token', botToken);
-      } else {
-        setBotStatus('error');
-        toast.error(`Connection failed: ${response.description}`);
-      }
-    } catch (error) {
-      setBotStatus('error');
-      toast.error('Failed to connect to Telegram bot');
-      console.error('Error testing bot connection:', error);
-    } finally {
-      setIsConnecting(false);
-    }
+  // Handle template deletion
+  const deleteTemplate = (id: string) => {
+    setTemplates(templates.filter(template => template.id !== id));
+    toast.info("Template deleted");
   };
 
-  // Send test message
-  const sendTestMessage = async () => {
-    if (!botToken) {
-      toast.error('Please enter a bot token');
-      return;
-    }
-
-    if (!testChatId) {
-      toast.error('Please enter a chat ID for testing');
-      return;
-    }
-
-    setIsSending(true);
-
-    try {
-      const botApi = new TelegramBotApi({ token: botToken });
-      const currentTemplate = templates[activeTab as keyof typeof templates];
-      // Fix: Remove the 'locations' property and just send the template message
-      const response = await botApi.sendMessage({
-        chat_id: testChatId,
-        text: currentTemplate.message,
-        parse_mode: 'HTML'
-      });
-
-      if (response.ok) {
-        toast.success('Test message sent successfully!');
-      } else {
-        toast.error(`Failed to send message: ${response.description}`);
-      }
-    } catch (error) {
-      toast.error('Failed to send test message');
-      console.error('Error sending test message:', error);
-    } finally {
-      setIsSending(false);
-    }
+  // Handle template usage
+  const useTemplate = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast.success("Template copied to clipboard!");
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bot Command Templates</CardTitle>
-        <CardDescription>
-          Configure responses sent when users interact with bot commands
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {/* Bot Configuration Section */}
-          <div className="space-y-4 pb-4 border-b">
-            <h3 className="text-lg font-medium">Telegram Bot Configuration</h3>
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="bot-token">
-                Bot Token <span className="text-xs text-muted-foreground">(from BotFather)</span>
-              </label>
-              <div className="flex space-x-2">
-                <Input
-                  id="bot-token"
-                  type="password"
-                  value={botToken}
-                  onChange={(e) => setBotToken(e.target.value)}
-                  placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                  className="flex-1"
+    <div className="border border-border rounded-lg p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-xl font-semibold">Message Templates</h2>
+          <p className="text-muted-foreground">
+            Create and manage templates for common messages
+          </p>
+        </div>
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>Create Template</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Template</DialogTitle>
+              <DialogDescription>
+                Create a new message template for quick responses.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Template Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter template name" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        A short name to identify this template
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <Button 
-                  onClick={testBotConnection}
-                  disabled={isConnecting}
-                  variant="outline"
-                >
-                  {isConnecting ? "Connecting..." : "Test Connection"}
-                </Button>
+                
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Message Content</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter your message template here" 
+                          className="min-h-[120px]" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        The content of your message template
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button type="submit">Save Template</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+      
+      {templates.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          No templates created yet. Create your first template to get started.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {templates.map((template) => (
+            <div 
+              key={template.id} 
+              className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-medium">{template.name}</h3>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => useTemplate(template.content)}
+                  >
+                    Use
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => deleteTemplate(template.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
+              <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                {template.content}
+              </p>
               <p className="text-xs text-muted-foreground">
-                This token will be stored securely in your browser for testing purposes.
+                Last used: {template.lastUsed}
               </p>
             </div>
-
-            {botStatus === 'success' && (
-              <Alert variant="default" className="bg-green-50 border-green-200">
-                <Settings className="h-4 w-4 text-green-600" />
-                <AlertTitle>Connection Successful</AlertTitle>
-                <AlertDescription>
-                  Your Telegram bot is connected and ready to use.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {botStatus === 'error' && (
-              <Alert variant="destructive">
-                <Settings className="h-4 w-4" />
-                <AlertTitle>Connection Failed</AlertTitle>
-                <AlertDescription>
-                  Unable to connect to your Telegram bot. Please check the token and try again.
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          {/* Command Templates Section */}
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
-            <TabsList className="mb-4">
-              <TabsTrigger value="start">/start</TabsTrigger>
-              <TabsTrigger value="location">/location</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="start" className="space-y-4">
-              <div>
-                <label className="text-sm font-medium" htmlFor="start-title">
-                  Template Title
-                </label>
-                <Input
-                  id="start-title"
-                  value={templates.start.title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="start-message">
-                  Welcome Message
-                </label>
-                <Textarea
-                  id="start-message"
-                  value={templates.start.message}
-                  onChange={(e) => handleMessageChange(e.target.value)}
-                  className="mt-1 h-32"
-                  placeholder="Enter the message users will see when they use /start"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  This message is sent when users first interact with the bot.
-                </p>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="location" className="space-y-4">
-              <div>
-                <label className="text-sm font-medium" htmlFor="location-title">
-                  Template Title
-                </label>
-                <Input
-                  id="location-title"
-                  value={templates.location.title}
-                  onChange={(e) => handleTitleChange(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="location-message">
-                  Location Response
-                </label>
-                <Textarea
-                  id="location-message"
-                  value={templates.location.message}
-                  onChange={(e) => handleMessageChange(e.target.value)}
-                  className="mt-1 h-32"
-                  placeholder="Enter the message users will see when they use /location"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Use {{locations}} as a placeholder for the list of locations.
-                </p>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          {/* Test Message Section */}
-          {botStatus === 'success' && (
-            <div className="pt-4 border-t space-y-4">
-              <h3 className="text-lg font-medium">Test Message</h3>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="test-chat-id">
-                  Chat ID for Testing
-                </label>
-                <Input
-                  id="test-chat-id"
-                  value={testChatId}
-                  onChange={(e) => setTestChatId(e.target.value)}
-                  placeholder="Chat ID (e.g., 123456789)"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter your personal chat ID to receive test messages.
-                </p>
-              </div>
-              <Button 
-                onClick={sendTestMessage}
-                disabled={isSending || !testChatId}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Send className="h-4 w-4" />
-                {isSending ? "Sending..." : "Send Test Message"}
-              </Button>
-            </div>
-          )}
+          ))}
         </div>
-      </CardContent>
-      <CardFooter>
-        <Button onClick={handleSaveTemplate}>
-          <Save className="mr-2 h-4 w-4" />
-          Save Template
-        </Button>
-      </CardFooter>
-    </Card>
+      )}
+      
+      <div className="mt-6">
+        <AspectRatio ratio={16 / 9} className="bg-muted rounded-md overflow-hidden">
+          <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
+            Template preview will appear here
+          </div>
+        </AspectRatio>
+      </div>
+    </div>
   );
 };
 
