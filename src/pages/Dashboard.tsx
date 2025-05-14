@@ -19,6 +19,10 @@ import {
   Bar
 } from "recharts";
 
+// Import missing components
+import { Button } from "@/components/ui/button";
+import { Settings, Shield, Database } from "lucide-react";
+
 // Sample data for charts
 const locationData = [
   {
