@@ -10,9 +10,11 @@ import Users from "./pages/Users";
 import Locations from "./pages/Locations";
 import NotFound from "./pages/NotFound";
 import Sidebar from "./components/Sidebar";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AuthProvider, useAuth, Permission } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
+
+type PermissionKey = keyof Permission;
 
 // Protected route component
 const ProtectedRoute = ({ 
@@ -20,7 +22,7 @@ const ProtectedRoute = ({
   requiredPermission 
 }: { 
   children: React.ReactNode;
-  requiredPermission?: keyof typeof useAuth().user?.permissions;
+  requiredPermission?: PermissionKey;
 }) => {
   const { isAuthenticated, user } = useAuth();
 
@@ -41,7 +43,7 @@ const DashboardLayout = ({
   requiredPermission
 }: { 
   children: React.ReactNode;
-  requiredPermission?: keyof typeof useAuth().user?.permissions;
+  requiredPermission?: PermissionKey;
 }) => {
   return (
     <ProtectedRoute requiredPermission={requiredPermission}>
