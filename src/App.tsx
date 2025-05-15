@@ -16,17 +16,13 @@ import { AuthProvider, useAuth, Permission } from "./contexts/AuthContext";
 import TemplateMessageConfig from "./components/TemplateMessageConfig";
 import AdminLocations from "./pages/admin/AdminLocations";
 
-const queryClient = new QueryClient();
-
-type PermissionKey = keyof Permission;
-
 // Protected route component
 const ProtectedRoute = ({ 
   children, 
   requiredPermission 
 }: { 
   children: React.ReactNode;
-  requiredPermission?: PermissionKey;
+  requiredPermission?: keyof Permission;
 }) => {
   const { isAuthenticated, user } = useAuth();
 
@@ -47,7 +43,7 @@ const DashboardLayout = ({
   requiredPermission
 }: { 
   children: React.ReactNode;
-  requiredPermission?: PermissionKey;
+  requiredPermission?: keyof Permission;
 }) => {
   return (
     <ProtectedRoute requiredPermission={requiredPermission}>
@@ -119,17 +115,23 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster position="top-right" />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Create a new QueryClient for every component instance 
+  // This is important to prevent the hook error
+  const queryClient = new QueryClient();
+  
+  return (
+    <BrowserRouter>
+      <TooltipProvider>
+        <QueryClientProvider client={queryClient}>
+          <Toaster position="top-right" />
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </QueryClientProvider>
+      </TooltipProvider>
+    </BrowserRouter>
+  );
+};
 
 export default App;
