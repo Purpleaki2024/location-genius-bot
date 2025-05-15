@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import {
   MenuIcon,
@@ -57,7 +57,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, title, onClick, isNested = 
 };
 
 const Sidebar = () => {
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [messageOpen, setMessageOpen] = useState(false);
