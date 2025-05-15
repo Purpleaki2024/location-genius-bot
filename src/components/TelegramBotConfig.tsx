@@ -14,8 +14,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { toast } from "sonner";
-import { MessageSquare, Telegram, Send } from "lucide-react";
-import { testConnection, sendMessage } from "@/utils/telegramBotApi";
+import { MessageSquare, Send } from "lucide-react";
+import { TelegramBotApi } from "@/utils/telegramBotApi";
 
 const TelegramBotConfig = () => {
   const [botToken, setBotToken] = useState<string>("");
@@ -57,7 +57,9 @@ const TelegramBotConfig = () => {
     
     setIsTesting(true);
     try {
-      const response = await testConnection(botToken);
+      const telegramBot = new TelegramBotApi({ token: botToken });
+      const response = await telegramBot.testConnection();
+      
       if (response.ok) {
         toast.success("Connection successful! Bot is working properly.");
       } else {
@@ -79,7 +81,12 @@ const TelegramBotConfig = () => {
     
     setIsTesting(true);
     try {
-      const response = await sendMessage(botToken, chatId, testMessage);
+      const telegramBot = new TelegramBotApi({ token: botToken });
+      const response = await telegramBot.sendMessage({
+        chat_id: chatId,
+        text: testMessage
+      });
+      
       if (response.ok) {
         toast.success("Test message sent successfully!");
       } else {
@@ -106,7 +113,7 @@ const TelegramBotConfig = () => {
     <Dialog>
       <DialogTrigger asChild>
         <Button variant="outline" className="flex gap-2">
-          <Telegram className="h-4 w-4" />
+          <MessageSquare className="h-4 w-4" />
           {isConfigured ? "Manage Telegram Bot" : "Connect Telegram Bot"}
         </Button>
       </DialogTrigger>
