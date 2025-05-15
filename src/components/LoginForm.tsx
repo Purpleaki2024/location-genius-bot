@@ -21,11 +21,12 @@ const LoginForm = () => {
     
     try {
       console.log("Attempting login with:", { username, password });
+      // Make sure to trim the username to avoid whitespace issues
       const success = await login(username.trim(), password);
       console.log("Login result:", success);
       
       if (success) {
-        toast.success(`Welcome back, ${username}!`);
+        toast.success(`Welcome back, ${username.trim()}!`);
         navigate("/dashboard");
       } else {
         toast.error("Login failed. Please check your credentials.");
