@@ -5,9 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import Locations from "./pages/Locations";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Sidebar from "./components/Sidebar";
 import { AuthProvider, useAuth, Permission } from "./contexts/AuthContext";
@@ -64,6 +66,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
       
       {/* Dashboard Routes */}
       <Route path="/dashboard" element={
@@ -79,6 +82,11 @@ const AppRoutes = () => {
       <Route path="/locations" element={
         <DashboardLayout requiredPermission="manageLocations">
           <Locations />
+        </DashboardLayout>
+      } />
+      <Route path="/profile" element={
+        <DashboardLayout>
+          <Profile />
         </DashboardLayout>
       } />
       <Route path="/settings" element={

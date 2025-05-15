@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     
-    // Find user by username
+    // Find user by username (case-insensitive)
     const foundUser = sampleUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
     
     if (foundUser) {
