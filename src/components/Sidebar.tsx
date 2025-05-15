@@ -19,6 +19,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  Map
 } from "lucide-react";
 
 interface NavItemProps {
@@ -61,6 +62,7 @@ const Sidebar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [messageOpen, setMessageOpen] = useState(false);
+  const [locationsOpen, setLocationsOpen] = useState(false);
 
   // Content for the sidebar
   const SidebarContent = () => (
@@ -90,12 +92,44 @@ const Sidebar = () => {
           />
           
           {/* Locations */}
-          <NavItem
-            to="/locations"
-            icon={<MapPin size={20} />}
-            title="Locations"
-            permission="manageLocations"
-          />
+          <Collapsible
+            open={locationsOpen}
+            onOpenChange={setLocationsOpen}
+            className="mt-2"
+          >
+            <CollapsibleTrigger className="w-full">
+              <div
+                className="flex items-center justify-between w-full rounded-lg px-3 py-2 text-base text-muted-foreground transition-all hover:bg-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin size={20} />
+                  <span>Locations</span>
+                </div>
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform ${
+                    locationsOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-1">
+              <NavItem
+                to="/locations"
+                icon={<Map size={20} />}
+                title="User View"
+                isNested
+                permission="manageLocations"
+              />
+              <NavItem
+                to="/admin/locations"
+                icon={<Settings size={20} />}
+                title="Admin View"
+                isNested
+                permission="manageLocations"
+              />
+            </CollapsibleContent>
+          </Collapsible>
           
           {/* Messaging */}
           <Collapsible

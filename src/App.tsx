@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import Sidebar from "./components/Sidebar";
 import { AuthProvider, useAuth, Permission } from "./contexts/AuthContext";
 import TemplateMessageConfig from "./components/TemplateMessageConfig";
+import AdminLocations from "./pages/admin/AdminLocations";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,11 @@ const AppRoutes = () => {
       <Route path="/locations" element={
         <DashboardLayout requiredPermission="manageLocations">
           <Locations />
+        </DashboardLayout>
+      } />
+      <Route path="/admin/locations" element={
+        <DashboardLayout requiredPermission="manageLocations">
+          <AdminLocations />
         </DashboardLayout>
       } />
       <Route path="/profile" element={

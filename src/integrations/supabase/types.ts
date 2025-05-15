@@ -9,7 +9,95 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      locations: {
+        Row: {
+          active: boolean
+          address: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          lat: number
+          lng: number
+          name: string
+          rating: number
+          type: string
+          updated_at: string
+          visits: number
+        }
+        Insert: {
+          active?: boolean
+          address: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lat: number
+          lng: number
+          name: string
+          rating?: number
+          type: string
+          updated_at?: string
+          visits?: number
+        }
+        Update: {
+          active?: boolean
+          address?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string
+          rating?: number
+          type?: string
+          updated_at?: string
+          visits?: number
+        }
+        Relationships: []
+      }
+      user_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          id: string
+          location_id: string | null
+          message: string | null
+          telegram_user_id: string | null
+          telegram_username: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          message?: string | null
+          telegram_user_id?: string | null
+          telegram_username?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          message?: string | null
+          telegram_user_id?: string | null
+          telegram_username?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activities_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
