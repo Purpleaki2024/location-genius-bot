@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,8 +13,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, ChevronDown, RefreshCw } from "lucide-react";
+import { format, subDays, subWeeks, subMonths, isSameDay } from "date-fns";
+import { Calendar as CalendarIcon, ChevronDown, RefreshCw, Filter } from "lucide-react";
 
 import UserHeader from "@/components/UserHeader";
 import StatCards from "@/components/StatCards";
@@ -27,15 +26,74 @@ import ManagerSection from "@/components/dashboard/ManagerSection";
 import UserSection from "@/components/dashboard/UserSection";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import LocationMapCard from "@/components/dashboard/LocationMapCard";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedTimeframe, setSelectedTimeframe] = useState("today");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Effect to update date based on timeframe selection
+  useEffect(() => {
+    const today = new Date();
+    
+    switch (selectedTimeframe) {
+      case "today":
+        setDate(today);
+        break;
+      case "yesterday":
+        setDate(subDays(today, 1));
+        break;
+      case "this_week":
+        // Keep current date but update UI
+        break;
+      case "last_week":
+        setDate(subWeeks(today, 1));
+        break;
+      case "this_month":
+        // Keep current date but update UI
+        break;
+      case "last_month":
+        setDate(subMonths(today, 1));
+        break;
+      default:
+        // Don't change the date for custom or all_time
+        break;
+    }
+  }, [selectedTimeframe]);
   
   const refreshData = () => {
     // In a real app, this would refresh the dashboard data
-    console.log("Refreshing dashboard data...");
+    setIsRefreshing(true);
+    toast.info("Refreshing dashboard data...");
+    
+    setTimeout(() => {
+      setIsRefreshing(false);
+      toast.success("Dashboard data refreshed!");
+    }, 1000);
+  };
+  
+  const getTimeframeLabel = () => {
+    switch (selectedTimeframe) {
+      case "today":
+        return "Today";
+      case "yesterday":
+        return "Yesterday";
+      case "this_week":
+        return "This Week";
+      case "last_week":
+        return "Last Week";
+      case "this_month":
+        return "This Month";
+      case "last_month":
+        return "Last Month";
+      case "all_time":
+        return "All Time";
+      default:
+        return date ? format(date, "PPP") : "Custom Date";
+    }
   };
   
   return (
@@ -48,15 +106,26 @@ const Dashboard = () => {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="justify-start text-left font-normal">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : "Pick a date"}
+                {getTimeframeLabel()}
+                {selectedTimeframe === "custom" && date && (
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {format(date, "PP")}
+                  </Badge>
+                )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0" align="end">
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={setDate}
+                onSelect={(newDate) => {
+                  setDate(newDate);
+                  if (newDate && !isSameDay(newDate, new Date())) {
+                    setSelectedTimeframe("custom");
+                  }
+                }}
                 initialFocus
+                className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
@@ -65,21 +134,28 @@ const Dashboard = () => {
             value={selectedTimeframe} 
             onValueChange={setSelectedTimeframe}
           >
-            <SelectTrigger className="w-[180px] h-9">
+            <SelectTrigger className="w-[150px] h-9">
               <SelectValue placeholder="Select timeframe" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
               <SelectItem value="this_week">This Week</SelectItem>
+              <SelectItem value="last_week">Last Week</SelectItem>
               <SelectItem value="this_month">This Month</SelectItem>
-              <SelectItem value="this_year">This Year</SelectItem>
+              <SelectItem value="last_month">Last Month</SelectItem>
               <SelectItem value="all_time">All Time</SelectItem>
             </SelectContent>
           </Select>
           
-          <Button variant="outline" size="sm" onClick={refreshData}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refreshData} 
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </div>
