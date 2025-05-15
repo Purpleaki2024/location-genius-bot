@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import ManagerSection from "@/components/dashboard/ManagerSection";
 import UserSection from "@/components/dashboard/UserSection";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import LocationMapCard from "@/components/dashboard/LocationMapCard";
+import TelegramBotConfig from "@/components/TelegramBotConfig";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -101,7 +103,9 @@ const Dashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <UserHeader title="Dashboard" />
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <TelegramBotConfig />
+          
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="justify-start text-left font-normal">
