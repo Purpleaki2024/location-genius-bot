@@ -21,7 +21,7 @@ const LoginForm = () => {
     
     try {
       console.log("Attempting login with:", { username, password });
-      const success = await login(username, password);
+      const success = await login(username.trim(), password);
       console.log("Login result:", success);
       
       if (success) {
