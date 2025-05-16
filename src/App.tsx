@@ -47,7 +47,7 @@ const DashboardLayout = ({
 }) => {
   return (
     <ProtectedRoute requiredPermission={requiredPermission}>
-      <div className="flex h-screen">
+      <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <main className="flex-1 overflow-auto">
           {children}
@@ -118,7 +118,15 @@ const AppRoutes = () => {
 const App = () => {
   // Create a new QueryClient for every component instance 
   // This is important to prevent the hook error
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: 1,
+        staleTime: 30000
+      }
+    }
+  });
   
   return (
     <BrowserRouter>

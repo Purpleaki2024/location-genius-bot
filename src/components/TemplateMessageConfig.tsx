@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
+import { Edit, Trash2, Copy, Plus } from "lucide-react";
 
 // Define the form schema
 const templateSchema = z.object({
@@ -37,6 +39,14 @@ const templateSchema = z.object({
 });
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
+
+// Template type
+interface Template {
+  id: string;
+  name: string;
+  content: string;
+  lastUsed: string;
+}
 
 // Sample templates
 const defaultTemplates = [
@@ -61,11 +71,14 @@ const defaultTemplates = [
 ];
 
 const TemplateMessageConfig = () => {
-  const [templates, setTemplates] = useState(defaultTemplates);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [templates, setTemplates] = useState<Template[]>(defaultTemplates);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [templatePreview, setTemplatePreview] = useState<string>("");
 
-  // Initialize form
-  const form = useForm<TemplateFormValues>({
+  // Initialize create form
+  const createForm = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
       name: "",
@@ -73,8 +86,17 @@ const TemplateMessageConfig = () => {
     },
   });
 
-  // Handle form submission
-  const onSubmit = (values: TemplateFormValues) => {
+  // Initialize edit form
+  const editForm = useForm<TemplateFormValues>({
+    resolver: zodResolver(templateSchema),
+    defaultValues: {
+      name: "",
+      content: "",
+    },
+  });
+
+  // Handle create form submission
+  const onCreateSubmit = (values: TemplateFormValues) => {
     // Add new template
     const newTemplate = {
       id: (templates.length + 1).toString(),
@@ -84,9 +106,36 @@ const TemplateMessageConfig = () => {
     };
     
     setTemplates([...templates, newTemplate]);
-    setIsDialogOpen(false);
-    form.reset();
+    setIsCreateDialogOpen(false);
+    createForm.reset();
     toast.success("Template created successfully!");
+  };
+
+  // Handle edit form submission
+  const onEditSubmit = (values: TemplateFormValues) => {
+    if (!selectedTemplate) return;
+
+    // Update template
+    const updatedTemplates = templates.map(template => 
+      template.id === selectedTemplate.id 
+        ? { ...template, name: values.name, content: values.content }
+        : template
+    );
+    
+    setTemplates(updatedTemplates);
+    setIsEditDialogOpen(false);
+    setSelectedTemplate(null);
+    toast.success("Template updated successfully!");
+  };
+
+  // Open edit dialog and set form values
+  const handleEditTemplate = (template: Template) => {
+    setSelectedTemplate(template);
+    editForm.reset({
+      name: template.name,
+      content: template.content,
+    });
+    setIsEditDialogOpen(true);
   };
 
   // Handle template deletion
@@ -101,6 +150,11 @@ const TemplateMessageConfig = () => {
     toast.success("Template copied to clipboard!");
   };
 
+  // Handle template preview
+  const previewTemplate = (content: string) => {
+    setTemplatePreview(content);
+  };
+
   return (
     <div className="border border-border rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
@@ -111,9 +165,12 @@ const TemplateMessageConfig = () => {
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Create Template</Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Template
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
@@ -123,10 +180,10 @@ const TemplateMessageConfig = () => {
               </DialogDescription>
             </DialogHeader>
             
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Form {...createForm}>
+              <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={createForm.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -143,7 +200,7 @@ const TemplateMessageConfig = () => {
                 />
                 
                 <FormField
-                  control={form.control}
+                  control={createForm.control}
                   name="content"
                   render={({ field }) => (
                     <FormItem>
@@ -170,6 +227,68 @@ const TemplateMessageConfig = () => {
             </Form>
           </DialogContent>
         </Dialog>
+        
+        {/* Edit dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Template</DialogTitle>
+              <DialogDescription>
+                Update your message template.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Template Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter template name" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        A short name to identify this template
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Message Content</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter your message template here" 
+                          className="min-h-[120px]" 
+                          {...field} 
+                          onChange={(e) => {
+                            field.onChange(e);
+                            previewTemplate(e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        The content of your message template
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <DialogFooter>
+                  <Button type="submit">Update Template</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
       
       {templates.length === 0 ? (
@@ -182,6 +301,7 @@ const TemplateMessageConfig = () => {
             <div 
               key={template.id} 
               className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
+              onClick={() => previewTemplate(template.content)}
             >
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-medium">{template.name}</h3>
@@ -189,15 +309,34 @@ const TemplateMessageConfig = () => {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => useTemplate(template.content)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      useTemplate(template.content);
+                    }}
                   >
-                    Use
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copy
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => deleteTemplate(template.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditTemplate(template);
+                    }}
                   >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteTemplate(template.id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
                     Delete
                   </Button>
                 </div>
@@ -214,9 +353,16 @@ const TemplateMessageConfig = () => {
       )}
       
       <div className="mt-6">
+        <h3 className="text-sm font-medium mb-2">Template Preview</h3>
         <AspectRatio ratio={16 / 9} className="bg-muted rounded-md overflow-hidden">
-          <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
-            Template preview will appear here
+          <div className="h-full w-full flex items-center justify-center p-4 overflow-auto">
+            {templatePreview ? (
+              <div className="text-sm whitespace-pre-wrap">{templatePreview}</div>
+            ) : (
+              <div className="text-muted-foreground text-sm">
+                Select a template to preview its content
+              </div>
+            )}
           </div>
         </AspectRatio>
       </div>

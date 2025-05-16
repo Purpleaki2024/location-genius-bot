@@ -39,9 +39,9 @@ const ChartsSection = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-2xl font-bold">Location Analytics</h2>
+          <h2 className="text-xl font-bold">Location Analytics</h2>
           <p className="text-muted-foreground">Monitor location requests and performance</p>
         </div>
         <div className="flex gap-2">
@@ -62,7 +62,7 @@ const ChartsSection = () => {
         </div>
       </div>
 
-      <Card>
+      <Card className="border shadow-sm">
         <CardContent className="pt-6">
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -105,13 +105,15 @@ const ChartsSection = () => {
         </CardContent>
       </Card>
       
-      <div className="mt-6">
+      <div className="mt-4">
         <TopRequestedLocations />
       </div>
 
-      <Button className="ml-auto flex items-center" variant="outline">
-        View All Analytics <ArrowRight className="ml-2 h-4 w-4" />
-      </Button>
+      <div className="flex justify-end mt-2">
+        <Button className="flex items-center" variant="outline">
+          View All Analytics <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 };

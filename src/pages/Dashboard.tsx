@@ -1,53 +1,88 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import StatCards from "@/components/StatCards";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import ChartsSection from "@/components/dashboard/ChartsSection";
-import RoleBasedContent from "@/components/dashboard/RoleBasedContent";
-import { useDashboardTimeframe } from "@/hooks/useDashboardTimeframe";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Users, BarChart } from "lucide-react";
+import TimeframeSelector from "@/components/dashboard/TimeframeSelector";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import DashboardCharts from "@/components/dashboard/DashboardCharts";
+import LocationMapCard from "@/components/dashboard/LocationMapCard";
+import StatCards from "@/components/StatCards";
+import ChartsSection from "@/components/dashboard/ChartsSection";
+import TelegramBotSummary from "@/components/dashboard/TelegramBotSummary";
+import RoleBasedContent from "@/components/dashboard/RoleBasedContent";
+import { BarChart, CalendarIcon, Clock, Users } from "lucide-react";
+import useDashboardTimeframe from "@/hooks/useDashboardTimeframe";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { 
-    date, 
-    setDate, 
-    selectedTimeframe, 
-    setSelectedTimeframe 
+  const {
+    timeframe,
+    changeTimeframe,
+    startDate,
+    endDate,
+    customStartDate,
+    customEndDate,
+    setCustomStartDate,
+    setCustomEndDate,
   } = useDashboardTimeframe();
   
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <BarChart className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Analytics & Reporting</h1>
         </div>
-        
-        <DashboardHeader 
-          date={date}
-          setDate={setDate}
-          selectedTimeframe={selectedTimeframe}
-          setSelectedTimeframe={setSelectedTimeframe}
+        <TimeframeSelector
+          timeframe={timeframe}
+          changeTimeframe={changeTimeframe}
+          startDate={startDate}
+          endDate={endDate}
+          customStartDate={customStartDate}
+          customEndDate={customEndDate}
+          setCustomStartDate={setCustomStartDate}
+          setCustomEndDate={setCustomEndDate}
         />
       </div>
-      
-      <Tabs defaultValue="requests" className="w-full">
-        <TabsList className="w-full grid grid-cols-3 mb-6">
-          <TabsTrigger value="requests" className="flex items-center gap-2">
-            <BarChart className="h-4 w-4" />
-            <span>Requests</span>
+
+      <DashboardHeader />
+
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">
+            <BarChart className="mr-2 h-4 w-4" />
+            Overview
           </TabsTrigger>
-          <TabsTrigger value="locations" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            <span>Locations</span>
+          <TabsTrigger value="requests">
+            <Clock className="mr-2 h-4 w-4" />
+            Requests
           </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            <span>Users</span>
+          <TabsTrigger value="locations">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            Locations
+          </TabsTrigger>
+          <TabsTrigger value="users">
+            <Users className="mr-2 h-4 w-4" />
+            Users
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+              <div className="space-y-6">
+                <div className="rounded-lg border border-border bg-card/30 p-6">
+                  <h2 className="text-lg font-semibold mb-4">Performance Overview</h2>
+                  <DashboardCharts />
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-6">
+              <LocationMapCard />
+              <TelegramBotSummary />
+            </div>
+          </div>
+        </TabsContent>
         
         <TabsContent value="requests" className="space-y-6">
           <div className="rounded-lg border border-border bg-card/30 p-6">
@@ -56,22 +91,22 @@ const Dashboard = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-lg border bg-card p-6">
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Requests</h3>
-              <p className="text-3xl font-bold text-blue-500">1,245</p>
-              <p className="text-sm text-green-600 mt-1">+12% from last week</p>
+            <div className="md:col-span-2 rounded-lg border bg-card p-6">
+              <h3 className="text-lg font-semibold mb-4">Request Trends</h3>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <DashboardCharts />
+                </ResponsiveContainer>
+              </div>
             </div>
             
             <div className="rounded-lg border bg-card p-6">
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Avg. Response Time</h3>
-              <p className="text-3xl font-bold text-green-500">1.2s</p>
-              <p className="text-sm text-green-600 mt-1">-0.3s from last week</p>
-            </div>
-            
-            <div className="rounded-lg border bg-card p-6">
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">Success Rate</h3>
-              <p className="text-3xl font-bold text-amber-500">98.3%</p>
-              <p className="text-sm text-green-600 mt-1">+1.2% from last week</p>
+              <h3 className="text-lg font-semibold mb-4">Request Types</h3>
+              <div className="h-[300px] flex items-center justify-center">
+                <div className="text-muted-foreground">
+                  Request types distribution chart
+                </div>
+              </div>
             </div>
           </div>
         </TabsContent>
@@ -82,151 +117,84 @@ const Dashboard = () => {
           </div>
           
           <div className="rounded-lg border bg-card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <MapPin className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Top Locations</h2>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium">Location</th>
-                    <th className="text-left py-3 px-4 font-medium">Requests</th>
-                    <th className="text-left py-3 px-4 font-medium">Success Rate</th>
-                    <th className="text-left py-3 px-4 font-medium">Avg. Response Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b hover:bg-muted/50">
-                    <td className="py-3 px-4">London</td>
-                    <td className="py-3 px-4">420</td>
-                    <td className="py-3 px-4">98.2%</td>
-                    <td className="py-3 px-4">1.03s</td>
-                  </tr>
-                  <tr className="border-b hover:bg-muted/50">
-                    <td className="py-3 px-4">Manchester</td>
-                    <td className="py-3 px-4">380</td>
-                    <td className="py-3 px-4">97.8%</td>
-                    <td className="py-3 px-4">2.29s</td>
-                  </tr>
-                  <tr className="border-b hover:bg-muted/50">
-                    <td className="py-3 px-4">Birmingham</td>
-                    <td className="py-3 px-4">310</td>
-                    <td className="py-3 px-4">98.5%</td>
-                    <td className="py-3 px-4">0.81s</td>
-                  </tr>
-                  <tr className="border-b hover:bg-muted/50">
-                    <td className="py-3 px-4">Leeds</td>
-                    <td className="py-3 px-4">275</td>
-                    <td className="py-3 px-4">99.1%</td>
-                    <td className="py-3 px-4">0.93s</td>
-                  </tr>
-                  <tr className="hover:bg-muted/50">
-                    <td className="py-3 px-4">Liverpool</td>
-                    <td className="py-3 px-4">260</td>
-                    <td className="py-3 px-4">98.7%</td>
-                    <td className="py-3 px-4">2.34s</td>
-                  </tr>
-                </tbody>
-              </table>
+            <h3 className="text-lg font-semibold mb-4">Location Map</h3>
+            <div className="h-[400px]">
+              <LocationMapCard />
             </div>
           </div>
         </TabsContent>
         
         <TabsContent value="users" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-lg border bg-card p-6">
-              <div className="flex items-center mb-2">
-                <Users className="h-5 w-5 text-blue-500 mr-2" />
-                <h3 className="text-sm font-medium text-muted-foreground">Total Users</h3>
-              </div>
-              <p className="text-3xl font-bold text-blue-500">3,452</p>
-              <p className="text-sm text-green-600 mt-1">+86 from last week</p>
-            </div>
-            
-            <div className="rounded-lg border bg-card p-6">
-              <div className="flex items-center mb-2">
-                <Users className="h-5 w-5 text-green-500 mr-2" />
-                <h3 className="text-sm font-medium text-muted-foreground">Active Users</h3>
-              </div>
-              <p className="text-3xl font-bold text-green-500">1,845</p>
-              <p className="text-sm text-muted-foreground mt-1">53% of total users</p>
-            </div>
-            
-            <div className="rounded-lg border bg-card p-6">
-              <div className="flex items-center mb-2">
-                <BarChart className="h-5 w-5 text-amber-500 mr-2" />
-                <h3 className="text-sm font-medium text-muted-foreground">Avg. Requests / User</h3>
-              </div>
-              <p className="text-3xl font-bold text-amber-500">4.2</p>
-              <p className="text-sm text-green-600 mt-1">+0.3 from last week</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-lg border bg-card p-6">
-              <h2 className="text-lg font-semibold mb-4">User Types</h2>
-              <div className="h-[200px]">
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  User type distribution chart
+            <div className="md:col-span-2">
+              <div className="space-y-6">
+                <div className="rounded-lg border border-border bg-card/30 p-6">
+                  <h2 className="text-lg font-semibold mb-4">User Activity</h2>
+                  <div className="h-[300px] flex items-center justify-center">
+                    <div className="text-muted-foreground">
+                      User activity chart coming soon
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-center gap-4 mt-4">
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-purple-500 mr-2"></div>
-                  <span className="text-sm">Regular Users: 65%</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-green-500 mr-2"></div>
-                  <span className="text-sm">Premium Users: 25%</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-amber-500 mr-2"></div>
-                  <span className="text-sm">New Users: 10%</span>
+                
+                <div className="rounded-lg border bg-card p-6">
+                  <h2 className="text-lg font-semibold mb-4">Top Active Users</h2>
+                  <div className="space-y-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            {String.fromCharCode(65 + i)}
+                          </div>
+                          <div>
+                            <div className="font-medium">User {String.fromCharCode(65 + i)}</div>
+                            <div className="text-sm text-muted-foreground">user{i}@example.com</div>
+                          </div>
+                        </div>
+                        <div className="text-sm">{100 - i * 12} requests</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="rounded-lg border bg-card p-6">
-              <h2 className="text-lg font-semibold mb-4">Top Users</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2 px-4 font-medium">User</th>
-                      <th className="text-left py-2 px-4 font-medium">Requests</th>
-                      <th className="text-left py-2 px-4 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b hover:bg-muted/50">
-                      <td className="py-2 px-4">John Doe</td>
-                      <td className="py-2 px-4">245</td>
-                      <td className="py-2 px-4"><span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">active</span></td>
-                    </tr>
-                    <tr className="border-b hover:bg-muted/50">
-                      <td className="py-2 px-4">Jane Smith</td>
-                      <td className="py-2 px-4">198</td>
-                      <td className="py-2 px-4"><span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">active</span></td>
-                    </tr>
-                    <tr className="border-b hover:bg-muted/50">
-                      <td className="py-2 px-4">Robert Johnson</td>
-                      <td className="py-2 px-4">176</td>
-                      <td className="py-2 px-4"><span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">active</span></td>
-                    </tr>
-                    <tr className="border-b hover:bg-muted/50">
-                      <td className="py-2 px-4">Emily Davis</td>
-                      <td className="py-2 px-4">152</td>
-                      <td className="py-2 px-4"><span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">inactive</span></td>
-                    </tr>
-                    <tr className="hover:bg-muted/50">
-                      <td className="py-2 px-4">Michael Wilson</td>
-                      <td className="py-2 px-4">134</td>
-                      <td className="py-2 px-4"><span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">active</span></td>
-                    </tr>
-                  </tbody>
-                </table>
+            <div className="space-y-6">
+              <div className="rounded-lg border bg-card p-6">
+                <h2 className="text-lg font-semibold mb-4">User Stats</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-muted-foreground">Total Users</div>
+                    <div className="font-medium">152</div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-muted-foreground">Active Today</div>
+                    <div className="font-medium">28</div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-muted-foreground">New This Week</div>
+                    <div className="font-medium">12</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="rounded-lg border bg-card p-6">
+                <h2 className="text-lg font-semibold mb-4">User Types</h2>
+                <div className="h-[200px]">
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    User type distribution chart
+                  </div>
+                </div>
+              </div>
+              
+              <div className="rounded-lg border bg-card p-6">
+                <h2 className="text-lg font-semibold mb-4">Retention Rate</h2>
+                <div className="flex flex-col items-center justify-center h-[200px]">
+                  <div className="text-3xl font-bold">76%</div>
+                  <div className="text-muted-foreground text-sm">
+                    Weekly retention rate
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -240,5 +208,8 @@ const Dashboard = () => {
     </div>
   );
 };
+
+// Add missing import for ResponsiveContainer 
+import { ResponsiveContainer } from "recharts";
 
 export default Dashboard;

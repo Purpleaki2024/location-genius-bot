@@ -42,7 +42,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, title, onClick, isNested = 
   }
   
   return (
-    <NavLink to={to} onClick={onClick} className="block">
+    <NavLink to={to} onClick={onClick} className="block" end>
       <div
         className={cn(
           "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-all hover:bg-accent",
@@ -61,8 +61,25 @@ const Sidebar = () => {
   const isMobile = useIsMobile();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [messageOpen, setMessageOpen] = useState(false);
-  const [locationsOpen, setLocationsOpen] = useState(false);
+  const location = useLocation();
+  
+  // Set initial state based on current route
+  const isMessagingRoute = location.pathname.includes("/settings");
+  const isLocationsRoute = location.pathname.includes("/locations") || location.pathname.includes("/admin/locations");
+  
+  const [messageOpen, setMessageOpen] = useState(isMessagingRoute);
+  const [locationsOpen, setLocationsOpen] = useState(isLocationsRoute);
+
+  // Handle mobile menu sheet close
+  const handleNavigation = () => {
+    if (isMobile) {
+      // Close the mobile sidebar when navigation happens
+      const closeButton = document.querySelector('[data-radix-collection-item]');
+      if (closeButton && closeButton instanceof HTMLElement) {
+        closeButton.click();
+      }
+    }
+  };
 
   // Content for the sidebar
   const SidebarContent = () => (
@@ -81,6 +98,7 @@ const Sidebar = () => {
             icon={<LayoutDashboard size={20} />}
             title="Dashboard"
             permission="viewDashboard"
+            onClick={handleNavigation}
           />
           
           {/* User Management */}
@@ -89,6 +107,7 @@ const Sidebar = () => {
             icon={<Users size={20} />}
             title="Users"
             permission="manageUsers"
+            onClick={handleNavigation}
           />
           
           {/* Locations */}
@@ -120,6 +139,7 @@ const Sidebar = () => {
                 title="User View"
                 isNested
                 permission="manageLocations"
+                onClick={handleNavigation}
               />
               <NavItem
                 to="/admin/locations"
@@ -127,6 +147,7 @@ const Sidebar = () => {
                 title="Admin View"
                 isNested
                 permission="manageLocations"
+                onClick={handleNavigation}
               />
             </CollapsibleContent>
           </Collapsible>
@@ -160,6 +181,7 @@ const Sidebar = () => {
                 title="Templates"
                 isNested
                 permission="viewSettings"
+                onClick={handleNavigation}
               />
             </CollapsibleContent>
           </Collapsible>
@@ -169,6 +191,7 @@ const Sidebar = () => {
             to="/profile"
             icon={<User size={20} />}
             title="My Profile"
+            onClick={handleNavigation}
           />
 
           <Separator className="my-4" />
@@ -179,6 +202,7 @@ const Sidebar = () => {
               to="/settings"
               icon={<Settings size={20} />}
               title="Settings"
+              onClick={handleNavigation}
             />
           )}
           
