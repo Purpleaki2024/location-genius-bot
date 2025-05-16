@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import TopRequestedLocations from "@/components/dashboard/TopRequestedLocations";
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
 // Sample data for the charts
 const requestVolumeData = [
@@ -28,6 +30,29 @@ const ChartsSection = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Location Analytics</h2>
+          <p className="text-muted-foreground">Monitor location requests and performance</p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            variant={chartType === "locations" ? "default" : "outline"}
+            onClick={() => setChartType("locations")}
+          >
+            Locations
+          </Button>
+          <Button 
+            size="sm" 
+            variant={chartType === "requests" ? "default" : "outline"}
+            onClick={() => setChartType("requests")}
+          >
+            Requests
+          </Button>
+        </div>
+      </div>
+
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           {chartType === "requests" ? (
@@ -67,9 +92,13 @@ const ChartsSection = () => {
         </ResponsiveContainer>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <TopRequestedLocations />
       </div>
+
+      <Button className="ml-auto flex items-center" variant="outline">
+        View All Analytics <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
     </div>
   );
 };

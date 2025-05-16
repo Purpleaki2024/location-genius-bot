@@ -52,10 +52,18 @@ export const useLocations = () => {
   // Add a new location
   const addLocation = useMutation({
     mutationFn: async (newLocation: NewLocation) => {
-      const { data, error } = await supabase.from('locations').insert({
+      // Default lat/lng to 0 if not provided (these fields are hidden in the UI now)
+      const locationWithDefaults = {
         ...newLocation,
+        lat: newLocation.lat || 0,
+        lng: newLocation.lng || 0,
         created_by: user?.id,
-      }).select();
+      };
+      
+      const { data, error } = await supabase
+        .from('locations')
+        .insert(locationWithDefaults)
+        .select();
       
       if (error) {
         toast.error('Failed to add location');
@@ -73,9 +81,16 @@ export const useLocations = () => {
   // Update an existing location
   const updateLocation = useMutation({
     mutationFn: async ({ id, location }: { id: string; location: Partial<Location> }) => {
+      // Ensure lat/lng are preserved if not provided
+      const updateData = {
+        ...location,
+        lat: location.lat ?? 0,
+        lng: location.lng ?? 0,
+      };
+      
       const { data, error } = await supabase
         .from('locations')
-        .update(location)
+        .update(updateData)
         .eq('id', id)
         .select();
       
