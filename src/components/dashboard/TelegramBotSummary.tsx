@@ -54,11 +54,11 @@ const TelegramBotSummary = () => {
     queryFn: async () => {
       try {
         // Get user count - manually fetch with SQL since the table might not be in the TypeScript types
-        const { count: userCount, error: userError } = await supabase
-          .rpc('get_telegram_user_count')
-          .single();
+        const { data: countResult, error: userError } = await supabase
+          .rpc('get_telegram_user_count');
           
         if (userError) throw new Error(userError.message);
+        const userCount = countResult && countResult.length > 0 ? countResult[0].count : 0;
         
         // Get messages stats - manually fetch with SQL since the table might not be in the TypeScript types
         const { data: statsData, error: statsError } = await supabase
@@ -75,17 +75,19 @@ const TelegramBotSummary = () => {
         };
         
         // Process stats from the bot_stats table
-        statsData?.forEach((stat: StatRecord) => {
-          if (stat.name === 'total_messages') {
-            stats.messages = stat.value;
-          } else if (stat.name === 'location_searches') {
-            stats.searches = stat.value;
-          } else if (stat.name.startsWith('cmd_')) {
-            // Track command usage
-            const cmdName = stat.name.substring(4); // Remove 'cmd_' prefix
-            stats.commands[cmdName] = stat.value;
-          }
-        });
+        if (statsData) {
+          statsData.forEach((stat: StatRecord) => {
+            if (stat.name === 'total_messages') {
+              stats.messages = stat.value;
+            } else if (stat.name === 'location_searches') {
+              stats.searches = stat.value;
+            } else if (stat.name.startsWith('cmd_')) {
+              // Track command usage
+              const cmdName = stat.name.substring(4); // Remove 'cmd_' prefix
+              stats.commands[cmdName] = stat.value;
+            }
+          });
+        }
         
         return stats;
       } catch (e) {
