@@ -16,7 +16,7 @@ const Dashboard = () => {
   } = useDashboardTimeframe();
   
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-8 p-6">
       <DashboardHeader 
         date={date}
         setDate={setDate}
@@ -24,7 +24,10 @@ const Dashboard = () => {
         setSelectedTimeframe={setSelectedTimeframe}
       />
       
-      <StatCards />
+      <div className="rounded-lg border border-border bg-card/30 p-6">
+        <h2 className="text-lg font-semibold mb-4">System Overview</h2>
+        <StatCards />
+      </div>
       
       <ChartsSection />
       
