@@ -1,0 +1,15 @@
+# Python caches
+__pycache__/
+*.pyc
+
+# Environment file (sensitive info)
+.env
+
+# Database file
+bot_data.db
+
+# Backup files
+backups/
+
+# OS specific files
+.DS_Store
