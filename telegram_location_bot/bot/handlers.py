@@ -22,15 +22,16 @@ def get_welcome_message():
             return f.read()
     except Exception:
         return (
-            "Hey, Welcome to the find a local Medic directory, Don't panic we got you covered. "
-            "As we are helping other members 24/7 in the Medic chat we have to enforce the following limits:\n"
+            "Hey,\n\n"
+            "Welcome to the find a local Medic directory, Don't panic we got you covered.\n\n"
+            "As we are helping other members 24/7 in the Medic chat we have to enforce the following limits:\n\n"
             "🎉 3 requests per 24hrs\n"
-            "⚡ 3 requests left for today\n"
-            "✨ How to find a local Medic\n"
-            "To find a local Medic simply click /number\n"
-            "Click /help for an array of other, tempting commands.\n"
-            "If you need your limit raised for whatever please ask an admin in the chat or press /help\n"
-            "Thank you, and we hope to see you again\n"
+            "⚡ 3 requests left for today\n\n"
+            "✨ <b>How to find a local Medic</b>\n\n"
+            "To find a local Medic simply click <b>/number</b>\n\n"
+            "Click <b>/help</b> for an array of other, tempting commands.\n\n"
+            "If you need your limit raised for whatever please ask an admin in the chat or press <b>/help</b>\n\n"
+            "Thank you, and we hope to see you again\n\n"
             "🎉 3 requests per 24hrs\n"
             "⚡ 3 requests left for today"
         )
@@ -61,7 +62,6 @@ def start_command(message):
     # Compose welcome message
     welcome = get_welcome_message()
     welcome += f"\n\n🎉 6 requests per 24hrs\n⚡ {requests_left} requests left for today"
-    safe_reply(bot, message, welcome, parse_mode='HTML', disable_web_page_preview=True)
 
 @bot.message_handler(commands=['invite'])
 @rate_limit(limit_sec=2)
