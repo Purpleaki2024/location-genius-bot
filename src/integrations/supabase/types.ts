@@ -9,6 +9,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bot_stats: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          value: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          value?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
+      location_searches: {
+        Row: {
+          created_at: string | null
+          id: string
+          latitude: string | null
+          longitude: string | null
+          query: string | null
+          query_type: string | null
+          telegram_user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          latitude?: string | null
+          longitude?: string | null
+          query?: string | null
+          query_type?: string | null
+          telegram_user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          latitude?: string | null
+          longitude?: string | null
+          query?: string | null
+          query_type?: string | null
+          telegram_user_id?: string | null
+        }
+        Relationships: []
+      }
       locations: {
         Row: {
           active: boolean
@@ -54,6 +108,36 @@ export type Database = {
           type?: string
           updated_at?: string
           visits?: number
+        }
+        Relationships: []
+      }
+      telegram_users: {
+        Row: {
+          first_name: string | null
+          first_seen: string | null
+          id: string
+          last_name: string | null
+          last_seen: string | null
+          telegram_id: string
+          username: string | null
+        }
+        Insert: {
+          first_name?: string | null
+          first_seen?: string | null
+          id?: string
+          last_name?: string | null
+          last_seen?: string | null
+          telegram_id: string
+          username?: string | null
+        }
+        Update: {
+          first_name?: string | null
+          first_seen?: string | null
+          id?: string
+          last_name?: string | null
+          last_seen?: string | null
+          telegram_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -103,7 +187,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_bot_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          value: number
+        }[]
+      }
+      get_telegram_user_count: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          count: number
+        }[]
+      }
+      increment_bot_stats: {
+        Args: { stat_name: string; increment_by: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
