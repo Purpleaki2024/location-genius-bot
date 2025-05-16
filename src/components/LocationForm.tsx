@@ -17,15 +17,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Location, NewLocation } from '@/hooks/use-locations';
 
+// Updated schema without lat/lng fields
 const locationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   address: z.string().min(5, 'Address must be at least 5 characters'),
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
   type: z.string().min(1, 'Type is required'),
   rating: z.coerce.number().min(0).max(5).default(0),
   description: z.string().nullable().optional(),
   active: z.boolean().default(true),
+  // Hidden fields with default values to maintain compatibility
+  lat: z.coerce.number().min(-90).max(90).default(0),
+  lng: z.coerce.number().min(-180).max(180).default(0),
 });
 
 type FormValues = z.infer<typeof locationSchema>;
@@ -122,36 +124,6 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
             </FormItem>
           )}
         />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="lat"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Latitude</FormLabel>
-                <FormControl>
-                  <Input type="number" step="any" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="lng"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Longitude</FormLabel>
-                <FormControl>
-                  <Input type="number" step="any" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
 
         <FormField
           control={form.control}

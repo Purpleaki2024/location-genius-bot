@@ -21,8 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LocationModal from "@/components/LocationModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MapPin, Plus, Search, MoreHorizontal, Edit, Trash2, Eye, ToggleLeft, ToggleRight, Filter, Download, Upload } from "lucide-react";
-import LocationMap from "@/components/LocationMap";
+import { Plus, Search, MoreHorizontal, Edit, Trash2, ToggleLeft, ToggleRight, Filter, Download } from "lucide-react";
 
 const AdminLocations = () => {
   const {
@@ -40,7 +39,6 @@ const AdminLocations = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editLocation, setEditLocation] = useState<Location | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"table" | "map">("table");
   
   // Filter locations based on search term
   const filteredLocations = locations.filter(location => 
@@ -127,10 +125,10 @@ const AdminLocations = () => {
 
   // Export locations to CSV
   const exportToCSV = () => {
-    const headers = "ID,Name,Address,Latitude,Longitude,Type,Rating,Visits,Active,Created At\n";
+    const headers = "ID,Name,Address,Type,Rating,Visits,Active,Created At\n";
     
     const csvData = locations.map(loc => 
-      `"${loc.id}","${loc.name}","${loc.address}",${loc.lat},${loc.lng},"${loc.type}",${loc.rating},${loc.visits},${loc.active},"${loc.created_at}"`
+      `"${loc.id}","${loc.name}","${loc.address}","${loc.type}",${loc.rating},${loc.visits},${loc.active},"${loc.created_at}"`
     ).join("\n");
     
     const blob = new Blob([headers + csvData], { type: 'text/csv' });
@@ -165,23 +163,6 @@ const AdminLocations = () => {
         </div>
         
         <div className="flex flex-wrap items-center space-x-2">
-          <div className="flex items-center space-x-2">
-            <Button 
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("table")}
-            >
-              Table
-            </Button>
-            <Button 
-              variant={viewMode === "map" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("map")}
-            >
-              Map
-            </Button>
-          </div>
-          
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Type" />
@@ -207,104 +188,85 @@ const AdminLocations = () => {
         </div>
       </div>
       
-      {/* View selection */}
-      {viewMode === "map" ? (
-        <div className="border rounded-lg p-4">
-          <LocationMap 
-            locations={filteredLocations.map(loc => ({
-              id: loc.id,
-              name: loc.name,
-              lat: loc.lat,
-              lng: loc.lng,
-              rating: loc.rating,
-              type: loc.type
-            }))} 
-            height="600px" 
-          />
-          <div className="mt-4 text-sm text-muted-foreground">
-            Showing {filteredLocations.length} locations on the map
-          </div>
-        </div>
-      ) : (
-        <div className="border border-border rounded-lg">
-          <Table>
-            <TableHeader>
+      {/* Locations table */}
+      <div className="border border-border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Rating</TableHead>
+              <TableHead className="text-right">Visits</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[80px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredLocations.length === 0 ? (
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead className="text-right">Visits</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
+                <TableCell colSpan={7} className="text-center py-8">
+                  No locations found. 
+                  <Button 
+                    variant="link" 
+                    onClick={() => setShowAddModal(true)}
+                    className="pl-1 h-auto py-0"
+                  >
+                    Add one now
+                  </Button>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLocations.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    No locations found. 
-                    <Button 
-                      variant="link" 
-                      onClick={() => setShowAddModal(true)}
-                      className="pl-1 h-auto py-0"
-                    >
-                      Add one now
-                    </Button>
+            ) : (
+              filteredLocations.map(location => (
+                <TableRow key={location.id}>
+                  <TableCell className="font-medium">{location.name}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{location.address}</TableCell>
+                  <TableCell>{getTypeBadge(location.type)}</TableCell>
+                  <TableCell>{location.rating.toFixed(1)}</TableCell>
+                  <TableCell className="text-right">{location.visits}</TableCell>
+                  <TableCell>
+                    <Badge variant={location.active ? "default" : "outline"}>
+                      {location.active ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditLocation(location)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleToggleStatus(location.id, location.active)}>
+                          {location.active ? (
+                            <>
+                              <ToggleLeft className="mr-2 h-4 w-4" />
+                              Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <ToggleRight className="mr-2 h-4 w-4" />
+                              Activate
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setLocationToDelete(location.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredLocations.map(location => (
-                  <TableRow key={location.id}>
-                    <TableCell className="font-medium">{location.name}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{location.address}</TableCell>
-                    <TableCell>{getTypeBadge(location.type)}</TableCell>
-                    <TableCell>{location.rating.toFixed(1)}</TableCell>
-                    <TableCell className="text-right">{location.visits}</TableCell>
-                    <TableCell>
-                      <Badge variant={location.active ? "default" : "outline"}>
-                        {location.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditLocation(location)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleStatus(location.id, location.active)}>
-                            {location.active ? (
-                              <>
-                                <ToggleLeft className="mr-2 h-4 w-4" />
-                                Deactivate
-                              </>
-                            ) : (
-                              <>
-                                <ToggleRight className="mr-2 h-4 w-4" />
-                                Activate
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setLocationToDelete(location.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
       
       <div className="text-sm text-muted-foreground">
         Showing {filteredLocations.length} of {locations.length} locations

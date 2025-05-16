@@ -1,12 +1,10 @@
 
 import Header from "@/components/Header";
 import LocationTable from "@/components/LocationTable";
-import LocationMap from "@/components/LocationMap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Download, Filter, List, MapPin } from "lucide-react";
+import { PlusCircle, Download, Filter, List } from "lucide-react";
 
 // Sample location data
 const locationData = [
@@ -57,7 +55,7 @@ const Locations = () => {
     <div className="space-y-6 p-6">
       <Header title="Location Management" />
       
-      <Tabs defaultValue="list" className="space-y-6">
+      <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex flex-1 items-center space-x-2">
             <Input
@@ -69,18 +67,7 @@ const Locations = () => {
             </Button>
           </div>
           
-          <div className="flex flex-wrap items-center space-x-2">
-            <TabsList>
-              <TabsTrigger value="list">
-                <List className="mr-2 h-4 w-4" />
-                List
-              </TabsTrigger>
-              <TabsTrigger value="map">
-                <MapPin className="mr-2 h-4 w-4" />
-                Map
-              </TabsTrigger>
-            </TabsList>
-            
+          <div className="flex flex-wrap items-center space-x-2">            
             <Select defaultValue="all">
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Type" />
@@ -107,19 +94,16 @@ const Locations = () => {
           </div>
         </div>
         
-        <TabsContent value="list" className="m-0">
+        <div className="border rounded-lg overflow-hidden">
           <LocationTable />
-        </TabsContent>
+        </div>
         
-        <TabsContent value="map" className="m-0">
-          <LocationMap locations={locationData} height="600px" />
-          <div className="mt-4 bg-muted/50 p-4 rounded-md">
-            <p className="text-sm text-muted-foreground">
-              To add a new location, click on the "Add Location" button or directly click on the map to select coordinates.
-            </p>
-          </div>
-        </TabsContent>
-      </Tabs>
+        <div className="mt-4 bg-muted/50 p-4 rounded-md">
+          <p className="text-sm text-muted-foreground">
+            To add a new location, click on the "Add Location" button.
+          </p>
+        </div>
+      </div>
       
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
