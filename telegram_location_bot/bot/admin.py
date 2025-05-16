@@ -4,10 +4,10 @@ import os
 import shutil
 from datetime import datetime
 from bot import config
-from bot.database import SessionLocal
 from admin.models import User, Location
 
 def get_stats():
+    from bot.database import SessionLocal  # moved import inside function to avoid circular import
     """Gather basic stats about the bot usage (user count, admin count, location count)."""
     session = SessionLocal()
     try:

@@ -2,7 +2,6 @@
 from flask import render_template, request, redirect, url_for, session, flash
 from admin import admin_bp
 from bot.auth import authenticate_user, verify_totp, login_required
-from bot.database import SessionLocal
 from admin.models import User, Location
 import pyotp
 
@@ -49,6 +48,7 @@ def verify_2fa():
             flash("Please enter the 2FA code.", "warning")
             return redirect(url_for('admin_bp.verify_2fa'))
         # Load pending user
+        from bot.database import SessionLocal
         session_db = SessionLocal()
         try:
             user = session_db.query(User).get(pending_id)
@@ -80,6 +80,7 @@ def logout():
 @login_required
 def dashboard():
     # Fetch some stats to display
+    from bot.database import SessionLocal
     session_db = SessionLocal()
     try:
         total_users = session_db.query(User).count()
@@ -102,6 +103,7 @@ def dashboard():
 @admin_bp.route('/users', methods=['GET', 'POST'])
 @login_required
 def users():
+    from bot.database import SessionLocal
     session_db = SessionLocal()
     try:
         if request.method == 'POST':
@@ -181,6 +183,7 @@ def users():
 @login_required
 def locations():
     # List all location records
+    from bot.database import SessionLocal
     session_db = SessionLocal()
     try:
         records = session_db.query(Location).order_by(Location.id.desc()).all()

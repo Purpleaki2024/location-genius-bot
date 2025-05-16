@@ -22,15 +22,17 @@ def get_welcome_message():
             return f.read()
     except Exception:
         return (
-            "<b>It's good to see you, darling!</b>\n\n"
-            "As an esteemed member of <a href='https://t.me/conciergekitchenchat'>The Concierge Kitchen Chat</a> \U0001F48E, you are bestowed with the following limits:\n\n"
-            "🎉 6 requests per 24hrs\n"
-            "⚡ 6 requests left for today\n\n"
-            "<b>✨ How to use Nigella</b>\n\n"
-            "For immediate indulgences, simply click /number\n\n"
-            "Click /help for an array of other, tempting commands.\n\n"
-            "If you need your limit raised for whatever reason, strike up a conversation with Nigella and an admin will be in touch.\n\n"
-            "Thank you,\n\nNigella x"
+            "Hey, Welcome to the find a local Medic directory, Don't panic we got you covered. "
+            "As we are helping other members 24/7 in the Medic chat we have to enforce the following limits:\n"
+            "🎉 3 requests per 24hrs\n"
+            "⚡ 3 requests left for today\n"
+            "✨ How to find a local Medic\n"
+            "To find a local Medic simply click /number\n"
+            "Click /help for an array of other, tempting commands.\n"
+            "If you need your limit raised for whatever please ask an admin in the chat or press /help\n"
+            "Thank you, and we hope to see you again\n"
+            "🎉 3 requests per 24hrs\n"
+            "⚡ 3 requests left for today"
         )
 
 # Handle /start command

@@ -89,8 +89,14 @@ def ensure_user(telegram_user):
         # Create new user record
         user = create_user(session, telegram_user)
         session.commit()
+    # Cache id and username before detaching and closing session
+    user_id = user.id
+    user_username = user.username
     session.expunge(user)  # detach user object before closing session
     session.close()
+    # Re-attach id and username to detached instance (safe for simple attributes)
+    user.id = user_id
+    user.username = user_username
     return user
 
 def add_location_entry(user, latitude, longitude, address, query=None):

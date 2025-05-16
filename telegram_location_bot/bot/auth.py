@@ -4,10 +4,10 @@ from functools import wraps
 from flask import session, redirect, url_for, flash
 from werkzeug.security import check_password_hash
 import pyotp
-from bot.database import SessionLocal
 from admin.models import User
 
 def authenticate_user(username, password):
+    from bot.database import SessionLocal  # moved import inside function to avoid circular import
     """Verify username and password. Returns User object if valid and user is admin & active, else None."""
     session_db = SessionLocal()
     try:
@@ -40,6 +40,7 @@ def login_required(func):
     """Flask route decorator to require admin login (including 2FA)."""
     @wraps(func)
     def wrapper(*args, **kwargs):
+        from bot.database import SessionLocal  # moved import inside function to avoid circular import
         user_id = session.get('user_id')
         if not user_id:
             # Not logged in
