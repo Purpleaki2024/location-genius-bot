@@ -41,3 +41,5 @@ export const useDashboardTimeframe = () => {
     setSelectedTimeframe
   };
 };
+
+export default useDashboardTimeframe;

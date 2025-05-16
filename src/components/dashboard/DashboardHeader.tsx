@@ -1,7 +1,6 @@
 
 import { Button } from "@/components/ui/button";
 import UserHeader from "@/components/UserHeader";
-import TimeframeSelector from "@/components/dashboard/TimeframeSelector";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -32,19 +31,12 @@ const DashboardHeader = ({
               className="w-full pl-8"
             />
           </div>
-          
-          <TimeframeSelector 
-            date={date}
-            setDate={setDate}
-            selectedTimeframe={selectedTimeframe}
-            setSelectedTimeframe={setSelectedTimeframe}
-          />
         </div>
       </div>
       
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Showing data for {selectedTimeframe === "all" ? "all time" : selectedTimeframe}
+          Showing data for {selectedTimeframe === "all_time" ? "all time" : selectedTimeframe}
         </div>
         
         <div className="flex gap-2">
