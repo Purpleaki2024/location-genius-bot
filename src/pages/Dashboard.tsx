@@ -18,8 +18,8 @@ const Dashboard = () => {
   } = useDashboardTimeframe();
   
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <BarChart className="h-6 w-6 text-primary" />
           <h1 className="text-2xl font-bold">Analytics & Reporting</h1>
@@ -52,9 +52,7 @@ const Dashboard = () => {
         <TabsContent value="requests" className="space-y-6">
           <div className="rounded-lg border border-border bg-card/30 p-6">
             <h2 className="text-lg font-semibold mb-4">Request Volume</h2>
-            <div className="h-[350px]">
-              <StatCards />
-            </div>
+            <StatCards />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -80,10 +78,7 @@ const Dashboard = () => {
         
         <TabsContent value="locations" className="space-y-6">
           <div className="rounded-lg border border-border bg-card/30 p-6">
-            <h2 className="text-lg font-semibold mb-4">Location Popularity</h2>
-            <div className="h-[350px]">
-              <ChartsSection />
-            </div>
+            <ChartsSection />
           </div>
           
           <div className="rounded-lg border bg-card p-6">
@@ -173,7 +168,6 @@ const Dashboard = () => {
             <div className="rounded-lg border bg-card p-6">
               <h2 className="text-lg font-semibold mb-4">User Types</h2>
               <div className="h-[200px]">
-                {/* Placeholder for pie chart */}
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   User type distribution chart
                 </div>
@@ -240,7 +234,9 @@ const Dashboard = () => {
       </Tabs>
       
       {/* Role-specific content */}
-      <RoleBasedContent role={user?.role} />
+      <div className="mt-6">
+        <RoleBasedContent role={user?.role} />
+      </div>
     </div>
   );
 };
