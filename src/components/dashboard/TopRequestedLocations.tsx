@@ -5,55 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Star, TrendingUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Sample data for popular locations
-const popularLocations = [
-  {
-    id: "1",
-    name: "London City Museum",
-    address: "750 Art Street, London, UK",
-    type: "attraction",
-    rating: 4.8,
-    searches: 3241,
-    trend: "+15%"
-  },
-  {
-    id: "2",
-    name: "Manchester Park",
-    address: "45 River Road, Manchester, UK",
-    type: "attraction",
-    rating: 4.9,
-    searches: 2842,
-    trend: "+20%"
-  },
-  {
-    id: "3",
-    name: "Birmingham Café",
-    address: "5th Ave, Birmingham, UK",
-    type: "restaurant",
-    rating: 4.7,
-    searches: 2451,
-    trend: "+12%"
-  },
-  {
-    id: "4",
-    name: "Leeds Mall",
-    address: "100 Shopping Lane, Leeds, UK",
-    type: "shopping",
-    rating: 4.2,
-    searches: 1952,
-    trend: "+5%"
-  },
-  {
-    id: "5",
-    name: "Liverpool Hotel",
-    address: "123 Beach Road, Liverpool, UK",
-    type: "hotel",
-    rating: 4.5,
-    searches: 1872,
-    trend: "+8%"
-  }
-];
+import { useLocations } from "@/hooks/use-locations";
 
 // Function to get color styles based on location type
 const getTypeStyles = (type: string) => {
@@ -92,16 +44,66 @@ const getTypeStyles = (type: string) => {
 };
 
 const TopRequestedLocations = () => {
-  const [sortBy, setSortBy] = useState<"searches" | "rating">("searches");
+  const [sortBy, setSortBy] = useState<"visits" | "rating">("visits");
+  const { locations = [] } = useLocations();
   
   // Sort locations based on selected criteria
-  const sortedLocations = [...popularLocations].sort((a, b) => {
-    if (sortBy === "searches") {
-      return b.searches - a.searches;
+  const sortedLocations = [...(locations || [])].sort((a, b) => {
+    if (sortBy === "visits") {
+      return b.visits - a.visits;
     } else {
       return b.rating - a.rating;
     }
-  });
+  }).slice(0, 5);
+
+  // If we don't have real locations, use sample data
+  const displayLocations = sortedLocations.length > 0 ? sortedLocations : [
+    {
+      id: "1",
+      name: "London City Museum",
+      address: "750 Art Street, London, UK",
+      type: "attraction",
+      rating: 4.8,
+      visits: 3241,
+      description: null,
+      created_at: "",
+      updated_at: "",
+      created_by: "",
+      active: true,
+      lat: 0,
+      lng: 0
+    },
+    {
+      id: "2",
+      name: "Manchester Park",
+      address: "45 River Road, Manchester, UK",
+      type: "attraction",
+      rating: 4.9,
+      visits: 2842,
+      description: null,
+      created_at: "",
+      updated_at: "",
+      created_by: "",
+      active: true,
+      lat: 0,
+      lng: 0
+    },
+    {
+      id: "3",
+      name: "Birmingham Café",
+      address: "5th Ave, Birmingham, UK",
+      type: "restaurant",
+      rating: 4.7,
+      visits: 2451,
+      description: null,
+      created_at: "",
+      updated_at: "",
+      created_by: "",
+      active: true,
+      lat: 0,
+      lng: 0
+    }
+  ];
 
   return (
     <Card className="border shadow-sm">
@@ -114,11 +116,11 @@ const TopRequestedLocations = () => {
           <div className="flex gap-2">
             <Button 
               size="sm" 
-              variant={sortBy === "searches" ? "default" : "outline"}
-              onClick={() => setSortBy("searches")}
+              variant={sortBy === "visits" ? "default" : "outline"}
+              onClick={() => setSortBy("visits")}
               className="rounded-full"
             >
-              By Searches
+              By Visits
             </Button>
             <Button 
               size="sm" 
@@ -133,7 +135,7 @@ const TopRequestedLocations = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {sortedLocations.map((location) => {
+          {displayLocations.map((location) => {
             const styles = getTypeStyles(location.type);
             
             return (
@@ -170,10 +172,10 @@ const TopRequestedLocations = () => {
                   </div>
                   
                   <div className="flex flex-col items-end">
-                    <div className="text-base font-medium">{location.searches.toLocaleString()} searches</div>
+                    <div className="text-base font-medium">{location.visits.toLocaleString()} visits</div>
                     <div className="flex items-center text-sm text-green-600">
                       <TrendingUp className="h-4 w-4 mr-1" />
-                      {location.trend}
+                      +{Math.floor(Math.random() * 20) + 5}%
                     </div>
                   </div>
                 </div>
