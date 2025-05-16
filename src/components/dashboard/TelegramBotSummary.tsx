@@ -58,7 +58,9 @@ const TelegramBotSummary = () => {
           .rpc('get_telegram_user_count');
           
         if (userError) throw new Error(userError.message);
-        const userCount = countResult && countResult.length > 0 ? countResult[0].count : 0;
+        
+        // Safely access the count - the function returns an array with a count object
+        const userCount = Array.isArray(countResult) && countResult.length > 0 ? countResult[0].count : 0;
         
         // Get messages stats - manually fetch with SQL since the table might not be in the TypeScript types
         const { data: statsData, error: statsError } = await supabase
@@ -75,7 +77,7 @@ const TelegramBotSummary = () => {
         };
         
         // Process stats from the bot_stats table
-        if (statsData) {
+        if (Array.isArray(statsData)) {
           statsData.forEach((stat: StatRecord) => {
             if (stat.name === 'total_messages') {
               stats.messages = stat.value;
