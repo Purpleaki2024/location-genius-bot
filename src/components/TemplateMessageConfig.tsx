@@ -135,6 +135,7 @@ const TemplateMessageConfig = () => {
       name: template.name,
       content: template.content,
     });
+    setTemplatePreview(template.content);
     setIsEditDialogOpen(true);
   };
 
@@ -148,6 +149,15 @@ const TemplateMessageConfig = () => {
   const useTemplate = (content: string) => {
     navigator.clipboard.writeText(content);
     toast.success("Template copied to clipboard!");
+    
+    // Update last used date
+    const updatedTemplates = templates.map(template => 
+      template.content === content 
+        ? { ...template, lastUsed: new Date().toISOString().split('T')[0] }
+        : template
+    );
+    
+    setTemplates(updatedTemplates);
   };
 
   // Handle template preview
@@ -210,6 +220,10 @@ const TemplateMessageConfig = () => {
                           placeholder="Enter your message template here" 
                           className="min-h-[120px]" 
                           {...field} 
+                          onChange={(e) => {
+                            field.onChange(e);
+                            previewTemplate(e.target.value);
+                          }}
                         />
                       </FormControl>
                       <FormDescription>
