@@ -1,3 +1,4 @@
+
 """Handlers for standard bot commands and messages."""
 from bot import bot
 from bot import database
@@ -26,6 +27,10 @@ def help_command(message):
         return
     help_text = ["\U0001F4CB *Available commands:*\n",
                  "/locate `<address>` – Get coordinates for a location by address.\n",
+                 "/city `<city name>` – Search for locations in a city.\n",
+                 "/town `<town name>` – Search for locations in a town.\n",
+                 "/village `<village name>` – Search for locations in a village.\n",
+                 "/postcode `<code>` – Search by postcode.\n",
                  "(You can also send a location pin, and I'll tell you the address.)\n"]
     # If user is admin, list admin commands
     if user.is_admin:
@@ -94,6 +99,40 @@ def location_shared(message):
         address = None
     # Log the location event
     database.add_location_entry(user.id, str(lat), str(lon), address, query=None)
+
+# Handle city, town, village, postcode commands
+@bot.message_handler(commands=['city', 'town', 'village', 'postcode'])
+@rate_limit(limit_sec=3)
+def location_type_command(message):
+    user = database.ensure_user(message.from_user)
+    if not user.is_active:
+        return
+        
+    # Get command type and query text
+    command = message.text.split()[0][1:]  # Remove the / prefix
+    parts = message.text.split(None, 1)
+    
+    if len(parts) < 2 or not parts[1].strip():
+        bot.reply_to(message, f"\u2139\ufe0f Usage: /{command} <name>")
+        return
+        
+    query = parts[1].strip()
+    bot.send_chat_action(message.chat.id, 'typing')
+    
+    # Here we would typically query our database for locations of this type
+    # For this handler, we'll just acknowledge the command
+    bot.reply_to(message, 
+                f"🔍 Searching for {command}s matching '{query}'...\n\n"
+                f"This would show results from our location database.")
+    
+    # Log the query
+    database.add_location_entry(
+        user.id, 
+        None,  # No coordinates for this search type
+        None, 
+        f"Search for {command}: {query}", 
+        query=query
+    )
 
 # Fallback handler for any other text
 @bot.message_handler(func=lambda msg: msg.content_type == 'text', commands=None)
