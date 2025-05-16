@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 const popularLocations = [
   {
     id: "1",
-    name: "City Museum",
-    address: "750 Art Street, Chicago, IL",
+    name: "London City Museum",
+    address: "750 Art Street, London, UK",
     type: "attraction",
     rating: 4.8,
     searches: 3241,
@@ -19,8 +19,8 @@ const popularLocations = [
   },
   {
     id: "2",
-    name: "Riverside Park",
-    address: "45 River Road, Boston, MA",
+    name: "Manchester Park",
+    address: "45 River Road, Manchester, UK",
     type: "attraction",
     rating: 4.9,
     searches: 2842,
@@ -28,8 +28,8 @@ const popularLocations = [
   },
   {
     id: "3",
-    name: "Central Park Café",
-    address: "5th Ave, New York, NY",
+    name: "Birmingham Café",
+    address: "5th Ave, Birmingham, UK",
     type: "restaurant",
     rating: 4.7,
     searches: 2451,
@@ -37,8 +37,8 @@ const popularLocations = [
   },
   {
     id: "4",
-    name: "Downtown Mall",
-    address: "100 Shopping Lane, Los Angeles, CA",
+    name: "Leeds Mall",
+    address: "100 Shopping Lane, Leeds, UK",
     type: "shopping",
     rating: 4.2,
     searches: 1952,
@@ -46,8 +46,8 @@ const popularLocations = [
   },
   {
     id: "5",
-    name: "Ocean View Hotel",
-    address: "123 Beach Road, Miami, FL",
+    name: "Liverpool Hotel",
+    address: "123 Beach Road, Liverpool, UK",
     type: "hotel",
     rating: 4.5,
     searches: 1872,
