@@ -14,20 +14,19 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Location, NewLocation } from '@/hooks/use-locations';
 
-// Updated schema with address field 
+// Updated schema removing type, rating and visits fields
 const locationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   address: z.string().min(5, 'Address must be at least 5 characters'),
-  type: z.string().min(1, 'Type is required'),
-  rating: z.coerce.number().min(0).max(5).default(0),
   description: z.string().nullable().optional(),
   active: z.boolean().default(true),
   // Hidden fields with default values to maintain compatibility
   lat: z.coerce.number().min(-90).max(90).default(0),
   lng: z.coerce.number().min(-180).max(180).default(0),
+  type: z.string().default('other'),
+  rating: z.coerce.number().min(0).max(5).default(0),
   visits: z.coerce.number().min(0).default(0),
 });
 
@@ -48,7 +47,7 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
       address: location?.address || '',
       lat: location?.lat || 0,
       lng: location?.lng || 0,
-      type: location?.type || '',
+      type: location?.type || 'other',
       rating: location?.rating || 0,
       description: location?.description || '',
       active: location?.active ?? true,
@@ -56,62 +55,22 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
     },
   });
 
-  const locationTypes = [
-    'restaurant',
-    'hotel',
-    'attraction',
-    'park',
-    'shopping',
-    'cafe',
-    'bar',
-    'museum',
-    'theater',
-    'other'
-  ];
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Location name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Type</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a location type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {locationTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Location name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
@@ -121,34 +80,6 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
               <FormLabel>Address</FormLabel>
               <FormControl>
                 <Input placeholder="Full address" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="rating"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Rating (0-5)</FormLabel>
-              <FormControl>
-                <Input type="number" min="0" max="5" step="0.1" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="visits"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Visit Count</FormLabel>
-              <FormControl>
-                <Input type="number" min="0" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
