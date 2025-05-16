@@ -10,30 +10,30 @@ import { cn } from "@/lib/utils";
 const popularLocations = [
   {
     id: "1",
-    name: "Central Park Café",
-    address: "5th Ave, New York, NY",
-    type: "restaurant",
-    rating: 4.7,
-    searches: 2451,
-    trend: "+12%"
-  },
-  {
-    id: "2",
-    name: "Ocean View Hotel",
-    address: "123 Beach Road, Miami, FL",
-    type: "hotel",
-    rating: 4.5,
-    searches: 1872,
-    trend: "+8%"
-  },
-  {
-    id: "3",
     name: "City Museum",
     address: "750 Art Street, Chicago, IL",
     type: "attraction",
     rating: 4.8,
     searches: 3241,
     trend: "+15%"
+  },
+  {
+    id: "2",
+    name: "Riverside Park",
+    address: "45 River Road, Boston, MA",
+    type: "attraction",
+    rating: 4.9,
+    searches: 2842,
+    trend: "+20%"
+  },
+  {
+    id: "3",
+    name: "Central Park Café",
+    address: "5th Ave, New York, NY",
+    type: "restaurant",
+    rating: 4.7,
+    searches: 2451,
+    trend: "+12%"
   },
   {
     id: "4",
@@ -46,12 +46,12 @@ const popularLocations = [
   },
   {
     id: "5",
-    name: "Riverside Park",
-    address: "45 River Road, Boston, MA",
-    type: "attraction",
-    rating: 4.9,
-    searches: 2842,
-    trend: "+20%"
+    name: "Ocean View Hotel",
+    address: "123 Beach Road, Miami, FL",
+    type: "hotel",
+    rating: 4.5,
+    searches: 1872,
+    trend: "+8%"
   }
 ];
 
@@ -60,38 +60,33 @@ const getTypeStyles = (type: string) => {
   switch(type) {
     case "restaurant":
       return {
-        bg: "bg-amber-100/60",
-        text: "text-amber-900",
-        border: "border-amber-200",
-        icon: "bg-amber-500"
+        bg: "bg-amber-50",
+        icon: "bg-amber-100",
+        iconColor: "text-amber-500"
       };
     case "hotel":
       return {
-        bg: "bg-blue-100/60",
-        text: "text-blue-900",
-        border: "border-blue-200",
-        icon: "bg-blue-500"
+        bg: "bg-blue-50",
+        icon: "bg-blue-100",
+        iconColor: "text-blue-500"
       };
     case "attraction":
       return {
-        bg: "bg-purple-100/60", 
-        text: "text-purple-900",
-        border: "border-purple-200",
-        icon: "bg-purple-500"
+        bg: "bg-purple-50", 
+        icon: "bg-purple-100",
+        iconColor: "text-purple-500"
       };
     case "shopping":
       return {
-        bg: "bg-pink-100/60",
-        text: "text-pink-900",
-        border: "border-pink-200",
-        icon: "bg-pink-500"
+        bg: "bg-pink-50",
+        icon: "bg-pink-100",
+        iconColor: "text-pink-500"
       };
     default:
       return {
-        bg: "bg-gray-100/60",
-        text: "text-gray-900",
-        border: "border-gray-200",
-        icon: "bg-gray-500"
+        bg: "bg-gray-50",
+        icon: "bg-gray-100",
+        iconColor: "text-gray-500"
       };
   }
 };
@@ -121,6 +116,7 @@ const TopRequestedLocations = () => {
               size="sm" 
               variant={sortBy === "searches" ? "default" : "outline"}
               onClick={() => setSortBy("searches")}
+              className="rounded-full"
             >
               By Searches
             </Button>
@@ -128,6 +124,7 @@ const TopRequestedLocations = () => {
               size="sm" 
               variant={sortBy === "rating" ? "default" : "outline"}
               onClick={() => setSortBy("rating")}
+              className="rounded-full"
             >
               By Rating
             </Button>
@@ -135,40 +132,37 @@ const TopRequestedLocations = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {sortedLocations.slice(0, 5).map((location, index) => {
+        <div className="space-y-2">
+          {sortedLocations.map((location) => {
             const styles = getTypeStyles(location.type);
             
             return (
               <div 
                 key={location.id} 
                 className={cn(
-                  "group rounded-lg p-3 transition-all hover:shadow-md relative overflow-hidden",
-                  styles.bg,
-                  styles.border
+                  "rounded-lg p-4 transition-all",
+                  styles.bg
                 )}
               >
-                <div className="absolute top-0 left-0 h-full w-1 opacity-70" style={{ backgroundColor: `var(--${location.type}-color, #9b87f5)` }} />
-                
                 <div className="flex items-start justify-between">
                   <div className="flex gap-3">
-                    <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white", styles.icon)}>
-                      <MapPin className="h-5 w-5" />
+                    <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", styles.icon)}>
+                      <MapPin className={cn("h-6 w-6", styles.iconColor)} />
                     </div>
                     
                     <div>
-                      <h3 className={cn("font-medium leading-tight group-hover:underline", styles.text)}>
+                      <h3 className="font-medium text-lg">
                         {location.name}
                       </h3>
-                      <p className="text-sm text-muted-foreground line-clamp-1">{location.address}</p>
+                      <p className="text-muted-foreground">{location.address}</p>
                       
                       <div className="mt-1 flex items-center gap-3">
                         <div className="flex items-center">
-                          <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 mr-1" />
-                          <span className="text-xs font-medium">{location.rating}/5</span>
+                          <Star className="h-4 w-4 text-amber-500 fill-amber-500 mr-1" />
+                          <span className="text-sm">{(location.rating).toFixed(1)}/5</span>
                         </div>
                         
-                        <Badge variant="outline" className="text-xs px-1.5 py-0">
+                        <Badge variant="outline" className="text-xs">
                           {location.type}
                         </Badge>
                       </div>
@@ -176,9 +170,9 @@ const TopRequestedLocations = () => {
                   </div>
                   
                   <div className="flex flex-col items-end">
-                    <div className="text-sm font-medium">{location.searches.toLocaleString()} searches</div>
-                    <div className="flex items-center text-xs text-green-600">
-                      <TrendingUp className="h-3 w-3 mr-0.5" />
+                    <div className="text-base font-medium">{location.searches.toLocaleString()} searches</div>
+                    <div className="flex items-center text-sm text-green-600">
+                      <TrendingUp className="h-4 w-4 mr-1" />
                       {location.trend}
                     </div>
                   </div>
@@ -187,7 +181,7 @@ const TopRequestedLocations = () => {
             );
           })}
           
-          <Button variant="outline" className="w-full" size="sm">
+          <Button variant="outline" className="w-full flex items-center justify-center py-2 mt-2">
             View All Popular Locations
             <ChevronDown className="ml-2 h-4 w-4" />
           </Button>
