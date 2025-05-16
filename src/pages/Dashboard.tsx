@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TimeframeSelector from "@/components/dashboard/TimeframeSelector";
@@ -9,16 +10,19 @@ import ChartsSection from "@/components/dashboard/ChartsSection";
 import TelegramBotSummary from "@/components/dashboard/TelegramBotSummary";
 import RoleBasedContent from "@/components/dashboard/RoleBasedContent";
 import { BarChart, CalendarIcon, Clock, Users } from "lucide-react";
-import { useDashboardTimeframe } from "@/hooks/useDashboardTimeframe";
-import { ResponsiveContainer } from "recharts";
+import useDashboardTimeframe from "@/hooks/useDashboardTimeframe";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const {
-    date,
-    setDate,
-    selectedTimeframe,
-    setSelectedTimeframe
+    timeframe,
+    changeTimeframe,
+    startDate,
+    endDate,
+    customStartDate,
+    customEndDate,
+    setCustomStartDate,
+    setCustomEndDate,
   } = useDashboardTimeframe();
   
   return (
@@ -29,19 +33,18 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold">Analytics & Reporting</h1>
         </div>
         <TimeframeSelector
-          date={date}
-          setDate={setDate}
-          selectedTimeframe={selectedTimeframe}
-          setSelectedTimeframe={setSelectedTimeframe}
+          timeframe={timeframe}
+          changeTimeframe={changeTimeframe}
+          startDate={startDate}
+          endDate={endDate}
+          customStartDate={customStartDate}
+          customEndDate={customEndDate}
+          setCustomStartDate={setCustomStartDate}
+          setCustomEndDate={setCustomEndDate}
         />
       </div>
 
-      <DashboardHeader 
-        date={date}
-        setDate={setDate}
-        selectedTimeframe={selectedTimeframe}
-        setSelectedTimeframe={setSelectedTimeframe}
-      />
+      <DashboardHeader />
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
@@ -205,5 +208,8 @@ const Dashboard = () => {
     </div>
   );
 };
+
+// Add missing import for ResponsiveContainer 
+import { ResponsiveContainer } from "recharts";
 
 export default Dashboard;

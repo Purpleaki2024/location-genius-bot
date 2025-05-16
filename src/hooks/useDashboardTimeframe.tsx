@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { subDays, subWeeks, subMonths } from "date-fns";
 
@@ -42,5 +41,3 @@ export const useDashboardTimeframe = () => {
     setSelectedTimeframe
   };
 };
-
-// No default export, only named export
