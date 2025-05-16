@@ -17,6 +17,14 @@ interface BotStats {
   };
 }
 
+interface StatRecord {
+  id: string;
+  name: string;
+  value: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 const TelegramBotSummary = () => {
   const [isConfigured, setIsConfigured] = useState(false);
   const [botUsername, setBotUsername] = useState("");
@@ -45,17 +53,16 @@ const TelegramBotSummary = () => {
     queryKey: ['botStats'],
     queryFn: async () => {
       try {
-        // Get user count
+        // Get user count - manually fetch with SQL since the table might not be in the TypeScript types
         const { count: userCount, error: userError } = await supabase
-          .from("telegram_users")
-          .select("*", { count: 'exact', head: true });
+          .rpc('get_telegram_user_count')
+          .single();
           
         if (userError) throw new Error(userError.message);
         
-        // Get messages stats
+        // Get messages stats - manually fetch with SQL since the table might not be in the TypeScript types
         const { data: statsData, error: statsError } = await supabase
-          .from("bot_stats")
-          .select("*");
+          .rpc('get_bot_stats');
           
         if (statsError) throw new Error(statsError.message);
         
@@ -68,7 +75,7 @@ const TelegramBotSummary = () => {
         };
         
         // Process stats from the bot_stats table
-        statsData?.forEach(stat => {
+        statsData?.forEach((stat: StatRecord) => {
           if (stat.name === 'total_messages') {
             stats.messages = stat.value;
           } else if (stat.name === 'location_searches') {
