@@ -30,7 +30,8 @@ const ProtectedRoute = ({
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredPermission && !user?.permissions[requiredPermission]) {
+  // Only check permission if it's explicitly required
+  if (requiredPermission && user?.permissions && !user?.permissions[requiredPermission]) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -77,12 +78,12 @@ const AppRoutes = () => {
         </DashboardLayout>
       } />
       <Route path="/locations" element={
-        <DashboardLayout requiredPermission="manageLocations">
+        <DashboardLayout>
           <Locations />
         </DashboardLayout>
       } />
       <Route path="/admin/locations" element={
-        <DashboardLayout requiredPermission="manageLocations">
+        <DashboardLayout>
           <AdminLocations />
         </DashboardLayout>
       } />

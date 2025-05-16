@@ -1,50 +1,50 @@
-import { useAuth } from "@/contexts/AuthContext";
-import { useDashboardTimeframe } from "@/hooks/useDashboardTimeframe";
-import { BarChart } from "lucide-react";
+
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { MapPin } from "lucide-react";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import TimeframeSelector from "@/components/dashboard/TimeframeSelector";
-import RoleBasedContent from "@/components/dashboard/RoleBasedContent";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
+import StatCards from "@/components/StatCards";
+import RoleBasedContent from "@/components/dashboard/RoleBasedContent";
+import TelegramBotSummary from "@/components/dashboard/TelegramBotSummary";
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const {
-    date,
-    setDate,
-    selectedTimeframe,
-    setSelectedTimeframe
-  } = useDashboardTimeframe();
+  const navigate = useNavigate();
   
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <BarChart className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Analytics & Reporting</h1>
-        </div>
-        <TimeframeSelector
-          date={date}
-          setDate={setDate}
-          selectedTimeframe={selectedTimeframe}
-          setSelectedTimeframe={setSelectedTimeframe}
-        />
-      </div>
-
-      <DashboardHeader 
-        date={date}
-        setDate={setDate}
-        selectedTimeframe={selectedTimeframe}
-        setSelectedTimeframe={setSelectedTimeframe}
-      />
-
-      <DashboardTabs 
-        date={date}
-        selectedTimeframe={selectedTimeframe}
-      />
+    <div className="space-y-6 p-6 pb-16">
+      <DashboardHeader />
       
-      {/* Role-specific content */}
-      <div className="mt-6">
-        <RoleBasedContent role={user?.role} />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
+        
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            onClick={() => navigate('/locations')}
+            className="flex items-center gap-2"
+          >
+            <MapPin className="h-4 w-4" />
+            User Locations
+          </Button>
+          <Button 
+            onClick={() => navigate('/admin/locations')}
+            variant="outline" 
+            className="flex items-center gap-2"
+          >
+            <MapPin className="h-4 w-4" />
+            Admin Locations
+          </Button>
+        </div>
+      </div>
+      
+      <StatCards />
+      
+      <div className="grid grid-cols-1 gap-6">
+        <TelegramBotSummary />
+        
+        <RoleBasedContent />
+        
+        <DashboardTabs />
       </div>
     </div>
   );

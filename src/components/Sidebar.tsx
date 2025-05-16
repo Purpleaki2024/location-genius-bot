@@ -63,12 +63,13 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Set initial state based on current route
+  // Make locations dropdown open by default for easier access
   const isMessagingRoute = location.pathname.includes("/settings");
   const isLocationsRoute = location.pathname.includes("/locations") || location.pathname.includes("/admin/locations");
   
+  // Set locations open by default to make it more visible
   const [messageOpen, setMessageOpen] = useState(isMessagingRoute);
-  const [locationsOpen, setLocationsOpen] = useState(isLocationsRoute);
+  const [locationsOpen, setLocationsOpen] = useState(true);
 
   // Handle mobile menu sheet close
   const handleNavigation = () => {
@@ -110,7 +111,7 @@ const Sidebar = () => {
             onClick={handleNavigation}
           />
           
-          {/* Locations */}
+          {/* Locations - Enhanced visibility */}
           <Collapsible
             open={locationsOpen}
             onOpenChange={setLocationsOpen}
@@ -118,10 +119,10 @@ const Sidebar = () => {
           >
             <CollapsibleTrigger className="w-full">
               <div
-                className="flex items-center justify-between w-full rounded-lg px-3 py-2 text-base text-muted-foreground transition-all hover:bg-accent"
+                className="flex items-center justify-between w-full rounded-lg px-3 py-2 text-base text-foreground font-medium transition-all hover:bg-accent"
               >
                 <div className="flex items-center gap-3">
-                  <MapPin size={20} />
+                  <MapPin size={20} className="text-primary" />
                   <span>Locations</span>
                 </div>
                 <ChevronDown
@@ -138,7 +139,6 @@ const Sidebar = () => {
                 icon={<Map size={20} />}
                 title="User View"
                 isNested
-                permission="manageLocations"
                 onClick={handleNavigation}
               />
               <NavItem
@@ -146,7 +146,6 @@ const Sidebar = () => {
                 icon={<Settings size={20} />}
                 title="Admin View"
                 isNested
-                permission="manageLocations"
                 onClick={handleNavigation}
               />
             </CollapsibleContent>
