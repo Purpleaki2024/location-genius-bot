@@ -44,24 +44,21 @@ def start_command(message):
     USER_STATE[user.id] = 'start'
     if not user.is_active:
         return
-    # Analytics: increment request count for today
     session = database.SessionLocal()
     try:
-        # Log a 'start' event for analytics
         if hasattr(database, 'log_analytics_event'):
             database.log_analytics_event(user.id, 'start')
-        # Count requests in last 24h
         since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=1)
         request_count = session.query(database.models.Location).filter(
             database.models.Location.user_id == user.id,
             database.models.Location.timestamp >= since
         ).count()
-        requests_left = max(0, 6 - request_count)
+        requests_left = max(0, 3 - request_count)
     finally:
         session.close()
-    # Compose welcome message
     welcome = get_welcome_message()
-    welcome += f"\n\n🎉 6 requests per 24hrs\n⚡ {requests_left} requests left for today"
+    welcome += f"\n\n🎉 3 requests per 24hrs\n⚡ {requests_left} requests left for today"
+    safe_reply(bot, message, welcome, parse_mode='HTML', disable_web_page_preview=True)
 
 @bot.message_handler(commands=['invite'])
 @rate_limit(limit_sec=2)
