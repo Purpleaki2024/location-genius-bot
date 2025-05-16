@@ -21,7 +21,7 @@ export interface Location {
   active: boolean;
 }
 
-export type NewLocation = Omit<Location, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'visits'>;
+export type NewLocation = Omit<Location, 'id' | 'created_at' | 'updated_at' | 'created_by'>;
 
 export const useLocations = () => {
   const queryClient = useQueryClient();
@@ -52,11 +52,12 @@ export const useLocations = () => {
   // Add a new location
   const addLocation = useMutation({
     mutationFn: async (newLocation: NewLocation) => {
-      // Default lat/lng to 0 if not provided (these fields are hidden in the UI now)
+      // Include visits field in the location data
       const locationWithDefaults = {
         ...newLocation,
         lat: newLocation.lat || 0,
         lng: newLocation.lng || 0,
+        visits: newLocation.visits || 0,
         created_by: user?.id,
       };
       
@@ -81,11 +82,12 @@ export const useLocations = () => {
   // Update an existing location
   const updateLocation = useMutation({
     mutationFn: async ({ id, location }: { id: string; location: Partial<Location> }) => {
-      // Ensure lat/lng are preserved if not provided
+      // Ensure visits field is preserved if not provided
       const updateData = {
         ...location,
         lat: location.lat ?? 0,
         lng: location.lng ?? 0,
+        visits: location.visits ?? 0,
       };
       
       const { data, error } = await supabase

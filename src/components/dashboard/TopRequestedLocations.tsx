@@ -60,8 +60,8 @@ const TopRequestedLocations = () => {
   const displayLocations = sortedLocations.length > 0 ? sortedLocations : [
     {
       id: "1",
-      name: "London City Museum",
-      address: "750 Art Street, London, UK",
+      name: "City Museum",
+      address: "750 Art Street, Chicago, IL",
       type: "attraction",
       rating: 4.8,
       visits: 3241,
@@ -75,8 +75,8 @@ const TopRequestedLocations = () => {
     },
     {
       id: "2",
-      name: "Manchester Park",
-      address: "45 River Road, Manchester, UK",
+      name: "Riverside Park",
+      address: "45 River Road, Boston, MA",
       type: "attraction",
       rating: 4.9,
       visits: 2842,
@@ -90,11 +90,41 @@ const TopRequestedLocations = () => {
     },
     {
       id: "3",
-      name: "Birmingham Café",
-      address: "5th Ave, Birmingham, UK",
+      name: "Central Park Café",
+      address: "5th Ave, New York, NY",
       type: "restaurant",
       rating: 4.7,
       visits: 2451,
+      description: null,
+      created_at: "",
+      updated_at: "",
+      created_by: "",
+      active: true,
+      lat: 0,
+      lng: 0
+    },
+    {
+      id: "4",
+      name: "Downtown Mall",
+      address: "100 Shopping Lane, Los Angeles, CA",
+      type: "shopping",
+      rating: 4.2,
+      visits: 1952,
+      description: null,
+      created_at: "",
+      updated_at: "",
+      created_by: "",
+      active: true,
+      lat: 0,
+      lng: 0
+    },
+    {
+      id: "5",
+      name: "Ocean View Hotel",
+      address: "123 Beach Road, Miami, FL",
+      type: "hotel",
+      rating: 4.5,
+      visits: 1872,
       description: null,
       created_at: "",
       updated_at: "",
@@ -120,7 +150,7 @@ const TopRequestedLocations = () => {
               onClick={() => setSortBy("visits")}
               className="rounded-full"
             >
-              By Visits
+              By Searches
             </Button>
             <Button 
               size="sm" 
@@ -172,7 +202,7 @@ const TopRequestedLocations = () => {
                   </div>
                   
                   <div className="flex flex-col items-end">
-                    <div className="text-base font-medium">{location.visits.toLocaleString()} visits</div>
+                    <div className="text-base font-medium">{location.visits.toLocaleString()} searches</div>
                     <div className="flex items-center text-sm text-green-600">
                       <TrendingUp className="h-4 w-4 mr-1" />
                       +{Math.floor(Math.random() * 20) + 5}%

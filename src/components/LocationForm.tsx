@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Location, NewLocation } from '@/hooks/use-locations';
 
-// Updated schema without lat/lng fields
+// Updated schema with address field 
 const locationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   address: z.string().min(5, 'Address must be at least 5 characters'),
@@ -28,6 +28,7 @@ const locationSchema = z.object({
   // Hidden fields with default values to maintain compatibility
   lat: z.coerce.number().min(-90).max(90).default(0),
   lng: z.coerce.number().min(-180).max(180).default(0),
+  visits: z.coerce.number().min(0).default(0),
 });
 
 type FormValues = z.infer<typeof locationSchema>;
@@ -51,6 +52,7 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
       rating: location?.rating || 0,
       description: location?.description || '',
       active: location?.active ?? true,
+      visits: location?.visits || 0,
     },
   });
 
@@ -133,6 +135,20 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
               <FormLabel>Rating (0-5)</FormLabel>
               <FormControl>
                 <Input type="number" min="0" max="5" step="0.1" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="visits"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Visit Count</FormLabel>
+              <FormControl>
+                <Input type="number" min="0" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

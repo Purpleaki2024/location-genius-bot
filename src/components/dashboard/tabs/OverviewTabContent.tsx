@@ -2,6 +2,7 @@
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import LocationMapCard from "@/components/dashboard/LocationMapCard";
 import TelegramBotSummary from "@/components/dashboard/TelegramBotSummary";
+import TopRequestedLocations from "@/components/dashboard/TopRequestedLocations";
 
 const OverviewTabContent = () => {
   return (
@@ -12,6 +13,7 @@ const OverviewTabContent = () => {
             <h2 className="text-lg font-semibold mb-4">Performance Overview</h2>
             <DashboardCharts />
           </div>
+          <TopRequestedLocations />
         </div>
       </div>
       
