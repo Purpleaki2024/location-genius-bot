@@ -1,7 +1,7 @@
 
 import StatCards from "@/components/StatCards";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
-import { ResponsiveContainer } from "recharts";
+import { Card, CardContent } from "@/components/ui/card";
 
 const RequestsTabContent = () => {
   return (
@@ -15,9 +15,7 @@ const RequestsTabContent = () => {
         <div className="md:col-span-2 rounded-lg border bg-card p-6">
           <h3 className="text-lg font-semibold mb-4">Request Trends</h3>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <DashboardCharts />
-            </ResponsiveContainer>
+            <DashboardCharts />
           </div>
         </div>
         
