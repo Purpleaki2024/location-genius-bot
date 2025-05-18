@@ -9,6 +9,7 @@ from bot.loveable import analyze_text
 from sqlalchemy import func
 from flask import current_app
 import datetime as dt
+import os
 
 # Only allow these commands at the start
 ALLOWED_COMMANDS = {'start', 'number', 'invite'}
@@ -35,6 +36,22 @@ def get_welcome_message():
             "Thank you, and we hope to see you again\n\n"
             "🎉 3 requests per 24hrs\n"
             "⚡ 3 requests left for today"
+        )
+
+# Load template for /numbers command
+def load_numbers_template():
+    template_path = os.path.join(os.path.dirname(__file__), '../templates/numbers_template.txt')
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return (
+            "Hello {username},\n\n"
+            "Here are numbers near: {address}\n\n"
+            "{numbers}\n\n"
+            "✂️ Tap the number to copy\n"
+            "⚠️ All distances are approximate\n"
+            "⚠️ Use at your own risk. Never pay upfront."
         )
 
 # Handle /start command
@@ -77,14 +94,6 @@ def number_command(message):
         return
     USER_STATE[user.id] = 'awaiting_location'
     safe_reply(bot, message, "📍 Please enter a location or postcode to search for numbers near you.")
-    
-    # Example integration with Loveable.dev
-    analysis_result = analyze_text(message.text)
-    if "error" in analysis_result:
-        safe_reply(bot, message, f"Error analyzing text: {analysis_result['error']}")
-    else:
-        sentiment = analysis_result.get("sentiment", "unknown")
-        safe_reply(bot, message, f"Sentiment analysis result: {sentiment}")
 
 @bot.message_handler(func=lambda msg: USER_STATE.get(msg.from_user.id) == 'awaiting_location' and msg.content_type == 'text')
 @rate_limit(limit_sec=2)
@@ -93,25 +102,28 @@ def handle_location_query(message):
     if not user.is_active:
         return
     location_query = message.text.strip()
+
     # Geocode the location
     geo_result = location.geocode_address(location_query)
     if not geo_result:
         safe_reply(bot, message, f"❌ Could not find any location for: {location_query}")
         return
+
     lat, lon, address = geo_result
+
     # Find the closest record in the database
     session = database.SessionLocal()
     try:
-        # Find closest Location record by Euclidean distance (for demo)
         closest_result = session.query(database.models.Location, database.models.User).join(database.models.User).order_by(
             func.abs(func.cast(database.models.Location.latitude, func.FLOAT) - lat) +
             func.abs(func.cast(database.models.Location.longitude, func.FLOAT) - lon)
         ).first()
+
         if not closest_result:
             safe_reply(bot, message, "No records found near that location.")
             return
+
         loc, loc_user = closest_result
-        # Format the template as in your screenshot
         reply = (
             f"Hello {user.first_name or user.username or 'there'},\n\n"
             f"Here is 1 number near: {address}\n\n"
@@ -125,9 +137,76 @@ def handle_location_query(message):
             f"⚠️ Use at your own risk. Never pay upfront."
         )
         safe_reply(bot, message, reply, parse_mode='HTML', disable_web_page_preview=True)
+    except Exception as e:
+        safe_reply(bot, message, f"❌ An error occurred: {str(e)}")
     finally:
         session.close()
+
     # Reset state so user must use /number again
+    USER_STATE[user.id] = 'start'
+
+@bot.message_handler(commands=['numbers'])
+@rate_limit(limit_sec=2)
+def numbers_command(message):
+    user = database.ensure_user(message.from_user)
+    if not user.is_active:
+        return
+    USER_STATE[user.id] = 'awaiting_location_numbers'
+    safe_reply(bot, message, "📍 Please enter a location or postcode to search for multiple numbers near you.")
+
+@bot.message_handler(func=lambda msg: USER_STATE.get(msg.from_user.id) == 'awaiting_location_numbers' and msg.content_type == 'text')
+@rate_limit(limit_sec=2)
+def handle_numbers_query(message):
+    user = database.ensure_user(message.from_user)
+    if not user.is_active:
+        return
+    location_query = message.text.strip()
+
+    # Geocode the location
+    geo_result = location.geocode_address(location_query)
+    if not geo_result:
+        safe_reply(bot, message, f"❌ Could not find any location for: {location_query}")
+        return
+
+    lat, lon, address = geo_result
+
+    # Find the closest records in the database
+    session = database.SessionLocal()
+    try:
+        closest_results = session.query(database.models.Location, database.models.User).join(database.models.User).order_by(
+            func.abs(func.cast(database.models.Location.latitude, func.FLOAT) - lat) +
+            func.abs(func.cast(database.models.Location.longitude, func.FLOAT) - lon)
+        ).limit(5).all()
+
+        if not closest_results:
+            safe_reply(bot, message, "No records found near that location.")
+            return
+
+        # Load the template
+        template = load_numbers_template()
+
+        # Format the numbers section
+        numbers_section = ""
+        for loc, loc_user in closest_results:
+            numbers_section += (
+                f"⭐️ {loc_user.username or loc_user.first_name or 'User'}\n"
+                f"Phone: {loc.latitude}\n"
+                f"🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n"
+            )
+
+        # Format the final reply
+        reply = template.format(
+            username=user.first_name or user.username or 'there',
+            address=address,
+            numbers=numbers_section
+        )
+        safe_reply(bot, message, reply, parse_mode=None, disable_web_page_preview=True)
+    except Exception as e:
+        safe_reply(bot, message, f"❌ An error occurred: {str(e)}")
+    finally:
+        session.close()
+
+    # Reset state so user must use /numbers again
     USER_STATE[user.id] = 'start'
 
 # Fallback: only allow /start, /number, /invite at the start

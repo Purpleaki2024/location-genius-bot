@@ -1,0 +1,9 @@
+Hello {username},
+
+Here are numbers near: {address}
+
+{numbers}
+
+✂️ Tap the number to copy
+⚠️ All distances are approximate
+⚠️ Use at your own risk. Never pay upfront.
