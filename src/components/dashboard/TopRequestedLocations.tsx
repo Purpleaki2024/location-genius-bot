@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ const getTypeStyles = (type: string) => {
 const TopRequestedLocations = () => {
   const [sortBy, setSortBy] = useState<"visits" | "rating">("visits");
   const { locations = [] } = useLocations();
+  const navigate = useNavigate();
   
   // Sort locations based on selected criteria
   const sortedLocations = [...(locations || [])].sort((a, b) => {
@@ -135,6 +137,10 @@ const TopRequestedLocations = () => {
     }
   ];
 
+  const handleViewAllLocations = () => {
+    navigate('/locations');
+  };
+
   return (
     <Card className="border shadow-sm">
       <CardHeader className="pb-3">
@@ -213,7 +219,11 @@ const TopRequestedLocations = () => {
             );
           })}
           
-          <Button variant="outline" className="w-full flex items-center justify-center py-2 mt-2">
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center py-2 mt-2"
+            onClick={handleViewAllLocations}
+          >
             View All Popular Locations
             <ChevronDown className="ml-2 h-4 w-4" />
           </Button>

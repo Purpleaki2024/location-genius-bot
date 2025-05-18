@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, MapPin, Star, Phone, Info, Key } from "lucide-react";
+import { ChevronRight, MapPin, Star, Phone, Key } from "lucide-react";
 import { TopLocation } from "@/types/locations";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -22,8 +22,7 @@ const mockLocations: TopLocation[] = [
     searches: 1243,
     percentChange: 12,
     contact: "+44 7123 456789",
-    password: "LONDON2023",
-    info: "Capital city with numerous attractions"
+    password: "LONDON2023"
   },
   {
     id: "2",
@@ -36,8 +35,7 @@ const mockLocations: TopLocation[] = [
     searches: 845,
     percentChange: 8,
     contact: "+44 7234 567890",
-    password: "MANC2023",
-    info: "Known for football and music scene"
+    password: "MANC2023"
   },
   {
     id: "3",
@@ -50,8 +48,7 @@ const mockLocations: TopLocation[] = [
     searches: 621,
     percentChange: 15,
     contact: "+44 7345 678901",
-    password: "BATH2023",
-    info: "Historic Roman baths and Georgian architecture"
+    password: "BATH2023"
   },
   {
     id: "4",
@@ -64,8 +61,7 @@ const mockLocations: TopLocation[] = [
     searches: 410,
     percentChange: 22,
     contact: "+44 7456 789012",
-    password: "BIBURY2023",
-    info: "Picturesque Cotswold village with historic cottages"
+    password: "BIBURY2023"
   },
   {
     id: "5",
@@ -78,8 +74,7 @@ const mockLocations: TopLocation[] = [
     searches: 380,
     percentChange: 5,
     contact: "+44 7567 890123",
-    password: "WESTMINSTER",
-    info: "Buckingham Palace area postcode"
+    password: "WESTMINSTER"
   }
 ];
 
@@ -177,13 +172,6 @@ const TopLocationsList = ({ sortBy, filterType = "all" }: TopLocationsListProps)
                         <div className="flex items-center text-sm">
                           <Key className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                           <span>Password: {location.password}</span>
-                        </div>
-                      )}
-                      
-                      {location.info && (
-                        <div className="flex items-center text-sm">
-                          <Info className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                          <span>{location.info}</span>
                         </div>
                       )}
                     </div>

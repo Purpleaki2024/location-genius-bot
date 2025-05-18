@@ -5,11 +5,10 @@ export interface TopLocation {
   address: string;
   city: string;
   state: string;
-  type: "attraction" | "restaurant" | "hotel" | "shopping" | "city" | "town" | "village" | "postcode";
+  type: string;
   rating: number;
   searches: number;
   percentChange: number;
   contact?: string;
   password?: string;
-  info?: string;
 }

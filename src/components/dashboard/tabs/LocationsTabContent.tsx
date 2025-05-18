@@ -11,6 +11,10 @@ const LocationsTabContent = () => {
   const [locationType, setLocationType] = useState<"all" | "city" | "town" | "village" | "postcode">("all");
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  
+  const handleViewAllLocations = () => {
+    navigate('/locations');
+  };
 
   return (
     <>
@@ -91,6 +95,12 @@ const LocationsTabContent = () => {
             </div>
             
             <TopLocationsList sortBy={viewMode} filterType={locationType} />
+            
+            <div className="flex justify-center mt-6">
+              <Button onClick={handleViewAllLocations}>
+                View All Locations
+              </Button>
+            </div>
           </div>
         </div>
       </div>

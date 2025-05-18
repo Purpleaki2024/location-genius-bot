@@ -8,7 +8,7 @@ const LocationsTabContent = () => {
   const navigate = useNavigate();
   
   const handleViewAllLocations = () => {
-    navigate('/admin/locations');
+    navigate('/locations');
   };
 
   return (
