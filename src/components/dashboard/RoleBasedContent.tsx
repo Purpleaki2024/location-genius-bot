@@ -28,7 +28,7 @@ const RoleBasedContent = () => {
         navigate('/profile');
         break;
       default:
-        toast.info(`View all ${role} content`);
+        navigate('/locations');
     }
   };
   

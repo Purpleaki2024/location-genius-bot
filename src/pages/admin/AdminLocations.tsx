@@ -22,7 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LocationModal from "@/components/LocationModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, ToggleLeft, ToggleRight, Filter, Download } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit, Trash2, ToggleLeft, ToggleRight, Download } from "lucide-react";
+import { toast } from "sonner";
 
 const AdminLocations = () => {
   const navigate = useNavigate();
@@ -53,6 +54,10 @@ const AdminLocations = () => {
     addLocation.mutate(data, {
       onSuccess: () => {
         setShowAddModal(false);
+        toast.success("Location added successfully");
+      },
+      onError: (error) => {
+        toast.error("Failed to add location: " + error.message);
       }
     });
   };
@@ -64,6 +69,10 @@ const AdminLocations = () => {
         {
           onSuccess: () => {
             setEditLocation(null);
+            toast.success("Location updated successfully");
+          },
+          onError: (error) => {
+            toast.error("Failed to update location: " + error.message);
           }
         }
       );
@@ -75,13 +84,27 @@ const AdminLocations = () => {
       deleteLocation.mutate(locationToDelete, {
         onSuccess: () => {
           setLocationToDelete(null);
+          toast.success("Location deleted successfully");
+        },
+        onError: (error) => {
+          toast.error("Failed to delete location: " + error.message);
         }
       });
     }
   };
 
   const handleToggleStatus = (id: string, currentStatus: boolean) => {
-    toggleLocationStatus.mutate({ id, active: !currentStatus });
+    toggleLocationStatus.mutate(
+      { id, active: !currentStatus },
+      {
+        onSuccess: () => {
+          toast.success(`Location ${currentStatus ? 'deactivated' : 'activated'} successfully`);
+        },
+        onError: (error) => {
+          toast.error("Failed to update status: " + error.message);
+        }
+      }
+    );
   };
   
   // Get location type badge
@@ -121,8 +144,7 @@ const AdminLocations = () => {
     { value: 'cafe', label: 'Cafe' },
     { value: 'bar', label: 'Bar' },
     { value: 'museum', label: 'Museum' },
-    { value: 'theater', label: 'Theater' },
-    { value: 'other', label: 'Other' }
+    { value: 'theater', label: 'Theater' }
   ];
 
   // Export locations to CSV
@@ -142,10 +164,12 @@ const AdminLocations = () => {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    
+    toast.success("Locations exported to CSV");
   };
 
   const handleSearch = () => {
-    // This would be replaced with actual search functionality
+    toast.info(`Searching for: ${searchTerm}`);
   };
 
   if (isLoading) {
@@ -153,7 +177,7 @@ const AdminLocations = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Admin header with controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex flex-1 items-center space-x-2">

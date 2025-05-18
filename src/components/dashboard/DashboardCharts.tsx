@@ -40,6 +40,17 @@ const DashboardCharts = () => {
   const [activeTab, setActiveTab] = useState("activity");
   const [dataType, setDataType] = useState("all");
   const [chartType, setChartType] = useState("line");
+  
+  const handleExportData = () => {
+    const blob = new Blob(["Chart Data Export"], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `chart-data-${activeTab}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
     <Card>
@@ -190,7 +201,7 @@ const DashboardCharts = () => {
         </Tabs>
         
         <div className="mt-4 text-xs text-muted-foreground text-right">
-          <Button variant="ghost" size="sm" className="h-auto p-0">
+          <Button variant="ghost" size="sm" className="h-auto p-0" onClick={handleExportData}>
             <span>Export Data</span>
             <ChevronDown className="ml-1 h-3 w-3" />
           </Button>

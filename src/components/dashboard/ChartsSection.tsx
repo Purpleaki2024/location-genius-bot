@@ -6,6 +6,7 @@ import TopRequestedLocations from "@/components/dashboard/TopRequestedLocations"
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useLocations } from "@/hooks/use-locations";
+import { useNavigate } from "react-router-dom";
 
 // Sample data for the charts
 const requestVolumeData = [
@@ -21,6 +22,7 @@ const requestVolumeData = [
 const ChartsSection = () => {
   const [chartType, setChartType] = useState<"locations" | "requests">("locations");
   const { locations } = useLocations();
+  const navigate = useNavigate();
 
   // Transform locations data for the bar chart if we have real data
   const locationPopularityData = locations && locations.length > 0
@@ -36,6 +38,10 @@ const ChartsSection = () => {
         { name: "Leeds", requests: 275, successRate: 99 },
         { name: "Liverpool", requests: 260, successRate: 98 },
       ];
+      
+  const handleViewAllAnalytics = () => {
+    navigate("/locations");
+  };
 
   return (
     <div className="space-y-4">
@@ -110,7 +116,7 @@ const ChartsSection = () => {
       </div>
 
       <div className="flex justify-end mt-2">
-        <Button className="flex items-center" variant="outline">
+        <Button className="flex items-center" variant="outline" onClick={handleViewAllAnalytics}>
           View All Analytics <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
