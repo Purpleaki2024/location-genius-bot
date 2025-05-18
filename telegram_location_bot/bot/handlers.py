@@ -3,7 +3,21 @@ from bot import bot
 from bot import database
 from bot import location
 from bot import rbac
-from bot.rate_limit import rate_limit
+fro@bot.message_hand@bot.message_handler(func=lambda msg: USER_STATE.get(msg.from_user.id) == 'awaiting_location' and msg.content_type == 'text')
+@rate_limit(limit_sec=2)
+def handle_location_query(message):
+    user = database.ensure_user(message.from_user)
+    print(f"[DEBUG] Processing location query for user {user.id} with state {USER_STATE.get(user.id)}")
+    if not user.is_active:
+        returnmmands=['number'])
+@rate_limit(limit_sec=2)
+def number_command(message):
+    user = database.ensure_user(message.from_user)
+    if not user.is_active:
+        return
+    USER_STATE[user.id] = 'awaiting_location'
+    print(f"[DEBUG] Set user {user.id} state to 'awaiting_location'")
+    safe_reply(bot, message, "📍 Please enter a location or postcode to search for numbers near you.")te_limit import rate_limit
 from bot.utils import safe_reply
 from bot.loveable import analyze_text
 from sqlalchemy import func
@@ -93,12 +107,14 @@ def number_command(message):
     if not user.is_active:
         return
     USER_STATE[user.id] = 'awaiting_location'
+    print(f"[DEBUG] Set user {user.id} state to 'awaiting_location'")
     safe_reply(bot, message, "📍 Please enter a location or postcode to search for numbers near you.")
 
 @bot.message_handler(func=lambda msg: USER_STATE.get(msg.from_user.id) == 'awaiting_location' and msg.content_type == 'text')
 @rate_limit(limit_sec=2)
 def handle_location_query(message):
     user = database.ensure_user(message.from_user)
+    print(f"[DEBUG] Processing location query for user {user.id} with state {USER_STATE.get(user.id)}")
     if not user.is_active:
         return
     location_query = message.text.strip()
@@ -124,12 +140,15 @@ def handle_location_query(message):
             return
 
         loc, loc_user = closest_result
+        phone_number = str(loc.latitude).strip()  # Ensure phone number is properly formatted
+        print(f"[DEBUG] Found phone number: {phone_number}")
+        
         reply = (
             f"Hello {user.first_name or user.username or 'there'},\n\n"
             f"Here is 1 number near: {address}\n\n"
             f"⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️\n"
             f"<b>{loc_user.username or loc_user.first_name or 'User'}</b>\n"
-            f"<a href='tel:{loc.latitude}'>{loc.latitude}</a>\n"
+            f"<a href='tel:{phone_number}'>{phone_number}</a>\n"
             f"^🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n"
             f"⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️\n\n"
             f"✂️ Tap the number to copy\n"
@@ -191,9 +210,10 @@ def handle_numbers_query(message):
         # Format the numbers section
         numbers_section = ""
         for loc, loc_user in closest_results:
+            phone_number = str(loc.latitude).strip()  # Ensure phone number is properly formatted
             numbers_section += (
                 f"⭐️ {loc_user.username or loc_user.first_name or 'User'}\n"
-                f"Phone: {loc.latitude}\n"
+                f"Phone: {phone_number}\n"
                 f"🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n"
             )
 
@@ -219,6 +239,14 @@ def handle_numbers_query(message):
 @rate_limit(limit_sec=1)
 def fallback(message):
     user = database.ensure_user(message.from_user)
+    current_state = USER_STATE.get(user.id, 'start')
+    print(f"[DEBUG] Fallback handler called for user {user.id} with state {current_state}")
+    
     if not user.is_active:
         return
+    
+    # Check if it looks like a location query but state is wrong
+    if message.text and not message.text.startswith('/'):
+        print(f"[DEBUG] Text message received in fallback: {message.text}")
+        
     safe_reply(bot, message, "❓ Please use /number to search for a number, or /invite to invite a friend.")
