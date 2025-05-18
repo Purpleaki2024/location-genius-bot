@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import AdminSection from "@/components/dashboard/AdminSection";
@@ -11,11 +12,24 @@ import { toast } from "sonner";
 const RoleBasedContent = () => {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(true);
+  const navigate = useNavigate();
   
   const role = user?.role || "user";
   
   const handleViewAll = () => {
-    toast.info(`View all ${role} content`);
+    switch (role) {
+      case 'admin':
+        navigate('/admin/locations');
+        break;
+      case 'manager':
+        navigate('/locations');
+        break;
+      case 'user':
+        navigate('/profile');
+        break;
+      default:
+        toast.info(`View all ${role} content`);
+    }
   };
   
   if (!role) return null;

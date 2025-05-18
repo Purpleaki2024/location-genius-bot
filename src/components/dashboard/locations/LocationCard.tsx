@@ -1,5 +1,6 @@
 
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MapPin, Star } from "lucide-react";
 import { toast } from "sonner";
@@ -41,10 +42,11 @@ export const getTypeStyles = (type: TopLocation["type"]) => {
 
 const LocationCard: React.FC<LocationCardProps> = ({ location }) => {
   const styles = getTypeStyles(location.type);
+  const navigate = useNavigate();
   
   const handleViewDetails = (id: string) => {
     toast.info(`Viewing details for location ${id}`);
-    // In a real app, this would navigate to location details
+    navigate(`/locations/${id}`);
   };
   
   return (

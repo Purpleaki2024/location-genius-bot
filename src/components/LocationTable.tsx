@@ -159,6 +159,7 @@ const LocationTable = () => {
 
   const editLocation = (locationId: string) => {
     toast.info(`Editing location ${locationId}`);
+    // This would open an edit form modal in a real implementation
   };
 
   const resetToTestData = () => {

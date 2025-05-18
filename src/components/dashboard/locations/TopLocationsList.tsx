@@ -1,11 +1,13 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, MapPin, Star, Phone, Info, Key } from "lucide-react";
 import { TopLocation } from "@/types/locations";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 
 // Mock data with new fields
 const mockLocations: TopLocation[] = [
@@ -89,6 +91,7 @@ interface TopLocationsListProps {
 const TopLocationsList = ({ sortBy, filterType = "all" }: TopLocationsListProps) => {
   const [showAll, setShowAll] = useState(false);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   
   // Sort and filter locations
   const sortedAndFilteredLocations = [...mockLocations]
@@ -133,6 +136,11 @@ const TopLocationsList = ({ sortBy, filterType = "all" }: TopLocationsListProps)
   // Format location type for display
   const formatLocationType = (type: string) => {
     return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
+  const handleViewDetails = (locationId: string) => {
+    toast.info(`Viewing location details for ID: ${locationId}`);
+    navigate(`/locations/${locationId}`);
   };
 
   return (
@@ -194,7 +202,12 @@ const TopLocationsList = ({ sortBy, filterType = "all" }: TopLocationsListProps)
                   </div>
                   
                   <div className="border-t p-3">
-                    <Button variant="ghost" size="sm" className="w-full justify-between">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-between"
+                      onClick={() => handleViewDetails(location.id)}
+                    >
                       View Details <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>

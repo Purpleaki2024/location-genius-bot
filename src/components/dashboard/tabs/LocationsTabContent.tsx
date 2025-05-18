@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ChartsSection from "@/components/dashboard/ChartsSection";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -9,6 +10,7 @@ const LocationsTabContent = () => {
   const [viewMode, setViewMode] = useState<"searches" | "rating">("searches");
   const [locationType, setLocationType] = useState<"all" | "city" | "town" | "village" | "postcode">("all");
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   return (
     <>

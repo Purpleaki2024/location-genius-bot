@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import UserHeader from "@/components/UserHeader";
 import { Search, Download, Printer } from "lucide-react";
@@ -22,18 +23,27 @@ const DashboardHeader = ({
   setSelectedTimeframe
 }: DashboardHeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       toast.info(`Searching for: ${searchQuery}`);
-      // In a real app, you would trigger a search here
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
   
   const handleExportData = () => {
     toast.success("Report exported to CSV");
-    // In a real app, you would trigger data export here
+    // Logic to export data to CSV would go here
+    const blob = new Blob(["Dashboard Report"], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dashboard-report-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
   
   const handlePrintReport = () => {

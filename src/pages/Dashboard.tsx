@@ -15,6 +15,14 @@ const Dashboard = () => {
   const { date, setDate, selectedTimeframe, setSelectedTimeframe } = useDashboardTimeframe();
   const isMobile = useIsMobile();
   
+  const handleUserLocations = () => {
+    navigate('/locations');
+  };
+  
+  const handleAdminLocations = () => {
+    navigate('/admin/locations');
+  };
+  
   return (
     <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-6'} pb-16`}>
       <DashboardHeader 
@@ -29,7 +37,7 @@ const Dashboard = () => {
         
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button 
-            onClick={() => navigate('/locations')}
+            onClick={handleUserLocations}
             className="flex items-center gap-2 flex-1 sm:flex-none justify-center sm:justify-start"
             size={isMobile ? "sm" : "default"}
           >
@@ -37,7 +45,7 @@ const Dashboard = () => {
             User Locations
           </Button>
           <Button 
-            onClick={() => navigate('/admin/locations')}
+            onClick={handleAdminLocations}
             variant="outline" 
             className="flex items-center gap-2 flex-1 sm:flex-none justify-center sm:justify-start"
             size={isMobile ? "sm" : "default"}

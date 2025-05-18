@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useLocations, Location } from "@/hooks/use-locations";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Search, MoreHorizontal, Edit, Trash2, ToggleLeft, ToggleRight, Filter, Download } from "lucide-react";
 
 const AdminLocations = () => {
+  const navigate = useNavigate();
   const {
     locations,
     isLoading,
@@ -142,6 +144,10 @@ const AdminLocations = () => {
     document.body.removeChild(a);
   };
 
+  const handleSearch = () => {
+    // This would be replaced with actual search functionality
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">Loading locations...</div>;
   }
@@ -157,7 +163,7 @@ const AdminLocations = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-sm"
           />
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={handleSearch}>
             <Search className="h-4 w-4" />
           </Button>
         </div>

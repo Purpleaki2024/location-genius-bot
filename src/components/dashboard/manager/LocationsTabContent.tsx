@@ -1,9 +1,16 @@
 
+import { useNavigate } from "react-router-dom";
 import { MapPin, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
 const LocationsTabContent = () => {
+  const navigate = useNavigate();
+  
+  const handleViewAllLocations = () => {
+    navigate('/admin/locations');
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -69,7 +76,13 @@ const LocationsTabContent = () => {
             <Progress value={12} className="h-2 mt-1" />
           </div>
         </div>
-        <Button className="w-full mt-4" size="sm">View All Locations</Button>
+        <Button 
+          className="w-full mt-4" 
+          size="sm"
+          onClick={handleViewAllLocations}
+        >
+          View All Locations
+        </Button>
       </div>
     </div>
   );
