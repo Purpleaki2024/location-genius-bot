@@ -16,7 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Edit, Star, Trash2 } from "lucide-react";
+import { MoreHorizontal, Edit, Star, Trash2, Trash } from "lucide-react";
+import { toast } from "sonner";
 
 interface Location {
   id: string;
@@ -115,57 +116,75 @@ const LocationTable = () => {
     setLocations(locations.filter(loc => loc.id !== locationId));
   };
 
+  const resetToTestData = () => {
+    setLocations(mockLocations);
+    toast.success("Reset to test locations only");
+  };
+
   return (
-    <div className="border border-border rounded-lg">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Address</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Rating</TableHead>
-            <TableHead className="text-right">Visits</TableHead>
-            <TableHead>Coordinates</TableHead>
-            <TableHead className="w-[80px]"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {locations.map(location => (
-            <TableRow key={location.id}>
-              <TableCell className="font-medium">{location.name}</TableCell>
-              <TableCell className="max-w-[200px] truncate">{location.address}</TableCell>
-              <TableCell>{getTypeBadge(location.type)}</TableCell>
-              <TableCell>{renderRating(location.rating)}</TableCell>
-              <TableCell className="text-right">{location.visits.toLocaleString()}</TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Edit className="mr-2 h-4 w-4" />
-                      <span>Edit</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-destructive" 
-                      onClick={() => deleteLocation(location.id)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      <span>Delete</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button 
+          variant="outline" 
+          onClick={resetToTestData}
+          className="flex items-center gap-2"
+        >
+          <Trash className="h-4 w-4" />
+          Reset to Test Locations
+        </Button>
+      </div>
+      
+      <div className="border border-border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Address</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Rating</TableHead>
+              <TableHead className="text-right">Visits</TableHead>
+              <TableHead>Coordinates</TableHead>
+              <TableHead className="w-[80px]"></TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {locations.map(location => (
+              <TableRow key={location.id}>
+                <TableCell className="font-medium">{location.name}</TableCell>
+                <TableCell className="max-w-[200px] truncate">{location.address}</TableCell>
+                <TableCell>{getTypeBadge(location.type)}</TableCell>
+                <TableCell>{renderRating(location.rating)}</TableCell>
+                <TableCell className="text-right">{location.visits.toLocaleString()}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Edit</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive" 
+                        onClick={() => deleteLocation(location.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
