@@ -7,6 +7,7 @@ import TopLocationsList from "@/components/dashboard/locations/TopLocationsList"
 
 const LocationsTabContent = () => {
   const [viewMode, setViewMode] = useState<"searches" | "rating">("searches");
+  const [locationType, setLocationType] = useState<"all" | "city" | "town" | "village" | "postcode">("all");
   const isMobile = useIsMobile();
 
   return (
@@ -44,7 +45,50 @@ const LocationsTabContent = () => {
               </div>
             </div>
             
-            <TopLocationsList sortBy={viewMode} />
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button 
+                onClick={() => setLocationType("all")}
+                variant={locationType === "all" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full"
+              >
+                All
+              </Button>
+              <Button 
+                onClick={() => setLocationType("city")}
+                variant={locationType === "city" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full"
+              >
+                Cities
+              </Button>
+              <Button 
+                onClick={() => setLocationType("town")}
+                variant={locationType === "town" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full"
+              >
+                Towns
+              </Button>
+              <Button 
+                onClick={() => setLocationType("village")}
+                variant={locationType === "village" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full"
+              >
+                Villages
+              </Button>
+              <Button 
+                onClick={() => setLocationType("postcode")}
+                variant={locationType === "postcode" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full"
+              >
+                Postcodes
+              </Button>
+            </div>
+            
+            <TopLocationsList sortBy={viewMode} filterType={locationType} />
           </div>
         </div>
       </div>

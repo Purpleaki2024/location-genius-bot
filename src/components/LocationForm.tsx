@@ -14,18 +14,23 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Location, NewLocation } from '@/hooks/use-locations';
 
-// Updated schema removing type, rating and visits fields
+// Updated schema to include the new fields
 const locationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   address: z.string().min(5, 'Address must be at least 5 characters'),
   description: z.string().nullable().optional(),
   active: z.boolean().default(true),
+  type: z.string().min(1, 'Please select a location type'),
+  // New fields
+  contact: z.string().optional(),
+  password: z.string().optional(),
+  info: z.string().optional(),
   // Hidden fields with default values to maintain compatibility
   lat: z.coerce.number().min(-90).max(90).default(0),
   lng: z.coerce.number().min(-180).max(180).default(0),
-  type: z.string().default('other'),
   rating: z.coerce.number().min(0).max(5).default(0),
   visits: z.coerce.number().min(0).default(0),
 });
@@ -45,9 +50,12 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
     defaultValues: {
       name: location?.name || '',
       address: location?.address || '',
+      type: location?.type || '',
+      contact: location?.contact || '',
+      password: location?.password || '',
+      info: location?.info || '',
       lat: location?.lat || 0,
       lng: location?.lng || 0,
-      type: location?.type || 'other',
       rating: location?.rating || 0,
       description: location?.description || '',
       active: location?.active ?? true,
@@ -80,6 +88,79 @@ const LocationForm = ({ location, onSubmit, onCancel, isSubmitting }: LocationFo
               <FormLabel>Address</FormLabel>
               <FormControl>
                 <Input placeholder="Full address" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Type</FormLabel>
+              <Select 
+                onValueChange={field.onChange} 
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="city">City</SelectItem>
+                  <SelectItem value="town">Town</SelectItem>
+                  <SelectItem value="village">Village</SelectItem>
+                  <SelectItem value="postcode">Postcode</SelectItem>
+                  <SelectItem value="attraction">Attraction</SelectItem>
+                  <SelectItem value="restaurant">Restaurant</SelectItem>
+                  <SelectItem value="hotel">Hotel</SelectItem>
+                  <SelectItem value="shopping">Shopping</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="contact"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contact Number</FormLabel>
+              <FormControl>
+                <Input placeholder="Phone number" {...field} value={field.value || ''} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input placeholder="Password for access" {...field} value={field.value || ''} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="info"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Information</FormLabel>
+              <FormControl>
+                <Input placeholder="Additional information" {...field} value={field.value || ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
