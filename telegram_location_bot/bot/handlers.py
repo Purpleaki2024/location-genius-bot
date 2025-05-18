@@ -3,21 +3,7 @@ from bot import bot
 from bot import database
 from bot import location
 from bot import rbac
-fro@bot.message_hand@bot.message_handler(func=lambda msg: USER_STATE.get(msg.from_user.id) == 'awaiting_location' and msg.content_type == 'text')
-@rate_limit(limit_sec=2)
-def handle_location_query(message):
-    user = database.ensure_user(message.from_user)
-    print(f"[DEBUG] Processing location query for user {user.id} with state {USER_STATE.get(user.id)}")
-    if not user.is_active:
-        returnmmands=['number'])
-@rate_limit(limit_sec=2)
-def number_command(message):
-    user = database.ensure_user(message.from_user)
-    if not user.is_active:
-        return
-    USER_STATE[user.id] = 'awaiting_location'
-    print(f"[DEBUG] Set user {user.id} state to 'awaiting_location'")
-    safe_reply(bot, message, "📍 Please enter a location or postcode to search for numbers near you.")te_limit import rate_limit
+from bot.rate_limit import rate_limit
 from bot.utils import safe_reply
 from bot.loveable import analyze_text
 from sqlalchemy import func
@@ -26,7 +12,7 @@ import datetime as dt
 import os
 
 # Only allow these commands at the start
-ALLOWED_COMMANDS = {'start', 'number', 'invite'}
+ALLOWED_COMMANDS = {'start', 'number', 'invite', 'numbers'}
 USER_STATE = {}
 
 # Helper to get the welcome message from config or database
@@ -126,6 +112,7 @@ def handle_location_query(message):
         return
 
     lat, lon, address = geo_result
+    print(f"[DEBUG] Geocoded location: {lat}, {lon}, {address}")
 
     # Find the closest record in the database
     session = database.SessionLocal()
@@ -149,7 +136,7 @@ def handle_location_query(message):
             f"⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️\n"
             f"<b>{loc_user.username or loc_user.first_name or 'User'}</b>\n"
             f"<a href='tel:{phone_number}'>{phone_number}</a>\n"
-            f"^🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n"
+            f"🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n"
             f"⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️\n\n"
             f"✂️ Tap the number to copy\n"
             f"⚠️ All distances are approximate\n"
@@ -157,6 +144,7 @@ def handle_location_query(message):
         )
         safe_reply(bot, message, reply, parse_mode='HTML', disable_web_page_preview=True)
     except Exception as e:
+        print(f"[ERROR] Exception occurred: {str(e)}")
         safe_reply(bot, message, f"❌ An error occurred: {str(e)}")
     finally:
         session.close()
@@ -171,12 +159,14 @@ def numbers_command(message):
     if not user.is_active:
         return
     USER_STATE[user.id] = 'awaiting_location_numbers'
+    print(f"[DEBUG] Set user {user.id} state to 'awaiting_location_numbers'")
     safe_reply(bot, message, "📍 Please enter a location or postcode to search for multiple numbers near you.")
 
 @bot.message_handler(func=lambda msg: USER_STATE.get(msg.from_user.id) == 'awaiting_location_numbers' and msg.content_type == 'text')
 @rate_limit(limit_sec=2)
 def handle_numbers_query(message):
     user = database.ensure_user(message.from_user)
+    print(f"[DEBUG] Processing numbers query for user {user.id} with state {USER_STATE.get(user.id)}")
     if not user.is_active:
         return
     location_query = message.text.strip()
@@ -234,7 +224,7 @@ def handle_numbers_query(message):
     # Reset state so user must use /numbers again
     USER_STATE[user.id] = 'start'
 
-# Fallback: only allow /start, /number, /invite at the start
+# Fallback: only allow commands in ALLOWED_COMMANDS at the start state
 @bot.message_handler(func=lambda msg: msg.content_type == 'text' and USER_STATE.get(msg.from_user.id, 'start') == 'start')
 @rate_limit(limit_sec=1)
 def fallback(message):
