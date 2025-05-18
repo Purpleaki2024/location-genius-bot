@@ -7,13 +7,20 @@ import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import StatCards from "@/components/StatCards";
 import RoleBasedContent from "@/components/dashboard/RoleBasedContent";
 import TelegramBotSummary from "@/components/dashboard/TelegramBotSummary";
+import { useDashboardTimeframe } from "@/hooks/useDashboardTimeframe";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { date, setDate, selectedTimeframe, setSelectedTimeframe } = useDashboardTimeframe();
   
   return (
     <div className="space-y-6 p-6 pb-16">
-      <DashboardHeader />
+      <DashboardHeader 
+        date={date}
+        setDate={setDate}
+        selectedTimeframe={selectedTimeframe}
+        setSelectedTimeframe={setSelectedTimeframe}
+      />
       
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
@@ -44,7 +51,10 @@ const Dashboard = () => {
         
         <RoleBasedContent />
         
-        <DashboardTabs />
+        <DashboardTabs 
+          date={date}
+          selectedTimeframe={selectedTimeframe}
+        />
       </div>
     </div>
   );
