@@ -19,6 +19,9 @@ export interface Location {
   created_by: string | null;
   visits: number;
   active: boolean;
+  contact?: string;  // Added property
+  password?: string; // Added property
+  info?: string;     // Added property
 }
 
 export type NewLocation = Omit<Location, 'id' | 'created_at' | 'updated_at' | 'created_by'>;
