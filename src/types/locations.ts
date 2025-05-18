@@ -10,5 +10,4 @@ export interface TopLocation {
   searches: number;
   percentChange: number;
   contact?: string;
-  password?: string;
 }
