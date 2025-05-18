@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import UserHeader from "@/components/UserHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ColorWheel, Settings as SettingsIcon, Bell, Layout, User, Clock, Save } from "lucide-react";
+import { Palette, Settings as SettingsIcon, Bell, Layout, User, Clock, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useSettings, ColorScheme, SidebarMode } from "@/contexts/SettingsContext";
 import TemplateMessageConfig from "@/components/TemplateMessageConfig";
@@ -54,7 +53,7 @@ const Settings = () => {
             General
           </TabsTrigger>
           <TabsTrigger value="appearance" className="flex items-center">
-            <ColorWheel className="mr-2 h-4 w-4" />
+            <Palette className="mr-2 h-4 w-4" />
             Appearance
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center">
