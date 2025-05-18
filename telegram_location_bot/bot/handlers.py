@@ -169,6 +169,7 @@ def handle_numbers_query(message):
         return
 
     lat, lon, address = geo_result
+    print(f"[DEBUG] Geocoded location: {lat}, {lon}, {address}")
 
     # Find the closest records in the database
     session = database.SessionLocal()
@@ -177,6 +178,8 @@ def handle_numbers_query(message):
             func.abs(func.cast(database.models.Location.latitude, func.FLOAT) - lat) +
             func.abs(func.cast(database.models.Location.longitude, func.FLOAT) - lon)
         ).limit(5).all()
+
+        print(f"[DEBUG] Closest results: {closest_results}")
 
         if not closest_results:
             safe_reply(bot, message, "No records found near that location.")
@@ -200,8 +203,10 @@ def handle_numbers_query(message):
             address=address,
             numbers=numbers_section
         )
+        print(f"[DEBUG] Final reply: {reply}")
         safe_reply(bot, message, reply, parse_mode=None, disable_web_page_preview=True)
     except Exception as e:
+        print(f"[ERROR] Exception occurred: {str(e)}")
         safe_reply(bot, message, f"❌ An error occurred: {str(e)}")
     finally:
         session.close()

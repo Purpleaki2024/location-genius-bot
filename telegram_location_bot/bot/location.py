@@ -18,15 +18,18 @@ def geocode_address(query: str) -> Optional[Tuple[float, float, str]]:
             "limit": 1,
             "addressdetails": 0
         }
+        logging.debug(f"[DEBUG] Geocoding query: {query}")
         resp = requests.get(GEOCODE_URL, params=params, headers=HEADERS, timeout=5)
         resp.raise_for_status()
         data = resp.json()
+        logging.debug(f"[DEBUG] Geocoding response: {data}")
         if not data:
             return None
         result = data[0] if isinstance(data, list) else data
         lat = float(result.get("lat"))
         lon = float(result.get("lon"))
         address = result.get("display_name", "").strip()
+        logging.debug(f"[DEBUG] Parsed geocoding result: lat={lat}, lon={lon}, address={address}")
         return lat, lon, address
     except Exception as e:
         logging.error(f"Geocoding error: {e}")
