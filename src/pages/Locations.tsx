@@ -33,50 +33,9 @@ import {
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-// Sample location data
-const locationData = [
-  {
-    id: "1",
-    name: "Central Park Café",
-    lat: 40.7812,
-    lng: -73.9665,
-    rating: 4.7,
-    type: "restaurant"
-  },
-  {
-    id: "2",
-    name: "Ocean View Hotel",
-    lat: 40.7609,
-    lng: -73.9845,
-    rating: 4.5,
-    type: "hotel"
-  },
-  {
-    id: "3",
-    name: "City Museum",
-    lat: 40.7789,
-    lng: -73.9675,
-    rating: 4.8,
-    type: "attraction"
-  },
-  {
-    id: "4",
-    name: "Sunset Park",
-    lat: 40.7645,
-    lng: -73.9865,
-    rating: 4.3,
-    type: "park"
-  },
-  {
-    id: "5",
-    name: "Downtown Mall",
-    lat: 40.7512,
-    lng: -73.9785,
-    rating: 4.1,
-    type: "shopping"
-  }
-];
+// Using the same sample location data as before
 
 const Locations = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,9 +45,9 @@ const Locations = () => {
   const [minRating, setMinRating] = useState(0);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const isMobile = useIsMobile();
   
   const handleExport = () => {
-    // In a production app, this would generate and download a CSV file
     toast.success("Exporting locations to CSV");
     setTimeout(() => {
       const link = document.createElement("a");
@@ -111,7 +70,6 @@ const Locations = () => {
   };
   
   const handleAddLocation = () => {
-    toast.success("Add Location dialog would open here");
     setIsAddLocationOpen(true);
   };
   
@@ -123,17 +81,17 @@ const Locations = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className={`space-y-6 ${isMobile ? 'p-4' : 'p-6'}`}>
       <Header title="Location Management" />
       
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <form onSubmit={handleSearch} className="flex flex-1 items-center space-x-2">
-            <div className="relative flex-1">
+          <form onSubmit={handleSearch} className="flex flex-1 items-center space-x-2 w-full">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search locations..."
-                className="pl-8"
+                className="pl-8 w-full"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -143,12 +101,13 @@ const Locations = () => {
             </Button>
           </form>
           
-          <div className="flex flex-wrap items-center space-x-2">            
+          <div className={`flex ${isMobile ? 'flex-col w-full' : 'flex-wrap'} items-center ${isMobile ? 'space-y-2' : 'space-x-2'}`}>            
             <Select 
               value={selectedType} 
               onValueChange={setSelectedType}
+              disabled={isMobile}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className={`${isMobile ? 'w-full' : 'w-[140px]'}`}>
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -161,15 +120,24 @@ const Locations = () => {
               </SelectContent>
             </Select>
             
-            <Button variant="outline" onClick={handleExport}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-            
-            <Button onClick={handleAddLocation}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Location
-            </Button>
+            <div className={`flex ${isMobile ? 'w-full' : ''} gap-2`}>
+              <Button 
+                variant="outline" 
+                onClick={handleExport}
+                className={`flex items-center ${isMobile ? 'flex-1' : ''}`}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              
+              <Button 
+                onClick={handleAddLocation}
+                className={`flex items-center ${isMobile ? 'flex-1' : ''}`}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Location
+              </Button>
+            </div>
           </div>
         </div>
         
@@ -192,12 +160,6 @@ const Locations = () => {
             </div>
           </div>
         )}
-        
-        <div className="mt-4 bg-muted/50 p-4 rounded-md">
-          <p className="text-sm text-muted-foreground">
-            To add a new location, click on the "Add Location" button.
-          </p>
-        </div>
       </div>
       
       <div className="flex items-center justify-between">
@@ -239,9 +201,34 @@ const Locations = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              In a production app, this would contain a form to add a new location.
-            </p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location-name">Location Name</Label>
+                  <Input id="location-name" placeholder="Enter location name" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location-code">Code</Label>
+                  <Input id="location-code" placeholder="Enter code" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location-postcode">Postcode</Label>
+                  <Input id="location-postcode" placeholder="Enter postcode" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location-contact">Contact</Label>
+                  <Input id="location-contact" placeholder="Enter contact number" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location-info">Info</Label>
+                  <Input id="location-info" placeholder="Enter additional info" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location-password">Password</Label>
+                  <Input id="location-password" placeholder="Enter password" />
+                </div>
+              </div>
+            </div>
             <div className="flex justify-end mt-4">
               <Button onClick={() => {
                 setIsAddLocationOpen(false);

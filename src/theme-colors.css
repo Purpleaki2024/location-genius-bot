@@ -55,3 +55,62 @@
 .compact-mode .card {
   padding: var(--spacing-sm);
 }
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .p-6 {
+    padding: 1rem;
+  }
+  
+  .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem;
+  }
+  
+  .card {
+    padding: 0.75rem;
+  }
+}
+
+/* Table styling for better mobile view */
+@media (max-width: 640px) {
+  .responsive-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .mobile-card-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .mobile-card-row {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+  
+  .mobile-card-row-header {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid hsl(var(--border));
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .mobile-card-row-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  
+  .mobile-card-row-content dt {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .mobile-card-row-content dd {
+    font-size: 0.875rem;
+  }
+}
