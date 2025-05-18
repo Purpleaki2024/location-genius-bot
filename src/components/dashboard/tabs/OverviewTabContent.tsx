@@ -1,6 +1,5 @@
 
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
-import LocationMapCard from "@/components/dashboard/LocationMapCard";
 import TelegramBotSummary from "@/components/dashboard/TelegramBotSummary";
 import TopRequestedLocations from "@/components/dashboard/TopRequestedLocations";
 
@@ -18,7 +17,6 @@ const OverviewTabContent = () => {
       </div>
       
       <div className="space-y-6">
-        <LocationMapCard />
         <TelegramBotSummary />
       </div>
     </div>
