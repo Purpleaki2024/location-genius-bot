@@ -114,3 +114,28 @@
     font-size: 0.875rem;
   }
 }
+
+/* Animation for location cards */
+@keyframes pulse-slow {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Define color variables for location types */
+:root {
+  --location-attraction-bg: #f3e8ff;
+  --location-attraction-icon-bg: #e9d5ff;
+  --location-restaurant-bg: #fef3c7;
+  --location-restaurant-icon-bg: #fde68a;
+  --location-shopping-bg: #fce7f3;
+  --location-shopping-icon-bg: #fbcfe8;
+  --location-hotel-bg: #dbeafe;
+  --location-hotel-icon-bg: #bfdbfe;
+}
