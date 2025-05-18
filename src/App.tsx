@@ -13,8 +13,10 @@ import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Sidebar from "./components/Sidebar";
 import { AuthProvider, useAuth, Permission } from "./contexts/AuthContext";
+import { SettingsProvider } from "./contexts/SettingsContext";
 import TemplateMessageConfig from "./components/TemplateMessageConfig";
 import AdminLocations from "./pages/admin/AdminLocations";
+import Settings from "./pages/Settings";
 
 // Protected route component
 const ProtectedRoute = ({ 
@@ -94,19 +96,7 @@ const AppRoutes = () => {
       } />
       <Route path="/settings" element={
         <DashboardLayout requiredPermission="viewSettings">
-          <div className="p-6 space-y-6">
-            <h1 className="text-2xl font-bold">Settings</h1>
-            <p className="text-muted-foreground">Configure your application settings and bot templates.</p>
-            
-            <div className="grid grid-cols-1 gap-6">
-              <TemplateMessageConfig />
-              
-              <div className="border border-border rounded-lg p-6">
-                <h2 className="text-xl font-semibold mb-4">General Settings</h2>
-                <p className="text-muted-foreground">Additional settings are under construction.</p>
-              </div>
-            </div>
-          </div>
+          <Settings />
         </DashboardLayout>
       } />
       
@@ -135,7 +125,9 @@ const App = () => {
         <QueryClientProvider client={queryClient}>
           <Toaster position="top-right" />
           <AuthProvider>
-            <AppRoutes />
+            <SettingsProvider>
+              <AppRoutes />
+            </SettingsProvider>
           </AuthProvider>
         </QueryClientProvider>
       </TooltipProvider>
