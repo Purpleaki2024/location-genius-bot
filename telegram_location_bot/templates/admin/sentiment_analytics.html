@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analytics</title>
+</head>
+<body>
+    <h1>Sentiment Analytics</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Sentiment</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sentiment, count in data %}
+            <tr>
+                <td>{{ sentiment }}</td>
+                <td>{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

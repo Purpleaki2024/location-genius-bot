@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from bot import config
 from admin import models
+import sqlite3
 
 # Create database engine
 # Enable check_same_thread for SQLite if using threading
@@ -16,6 +17,25 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 # Create tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
+
+# Ensure the table exists
+DB_PATH = config.DATABASE_URL.split("///")[-1]  # Extract SQLite file path from DATABASE_URL
+conn = sqlite3.connect(DB_PATH)
+cursor = conn.cursor()
+cursor.execute(
+    """
+    CREATE TABLE IF NOT EXISTS analysis_results (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        text TEXT,
+        sentiment TEXT,
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """
+)
+conn.commit()
+conn.close()
 
 # Initial admin user setup
 def init_admin_user():
@@ -121,3 +141,17 @@ def add_location_entry(user, latitude, longitude, address, query=None):
         return loc
     finally:
         session.close()
+
+def save_analysis_result(user_id, text, analysis_result):
+    """Save the Loveable.dev analysis result to the database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO analysis_results (user_id, text, sentiment, details)
+        VALUES (?, ?, ?, ?)
+        """,
+        (user_id, text, analysis_result.get("sentiment"), str(analysis_result))
+    )
+    conn.commit()
+    conn.close()

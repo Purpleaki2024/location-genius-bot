@@ -5,6 +5,7 @@ from bot import location
 from bot import rbac
 from bot.rate_limit import rate_limit
 from bot.utils import safe_reply
+from bot.loveable import analyze_text
 from sqlalchemy import func
 from flask import current_app
 import datetime as dt
@@ -76,6 +77,14 @@ def number_command(message):
         return
     USER_STATE[user.id] = 'awaiting_location'
     safe_reply(bot, message, "📍 Please enter a location or postcode to search for numbers near you.")
+    
+    # Example integration with Loveable.dev
+    analysis_result = analyze_text(message.text)
+    if "error" in analysis_result:
+        safe_reply(bot, message, f"Error analyzing text: {analysis_result['error']}")
+    else:
+        sentiment = analysis_result.get("sentiment", "unknown")
+        safe_reply(bot, message, f"Sentiment analysis result: {sentiment}")
 
 @bot.message_handler(func=lambda msg: USER_STATE.get(msg.from_user.id) == 'awaiting_location' and msg.content_type == 'text')
 @rate_limit(limit_sec=2)
