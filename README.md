@@ -36,6 +36,41 @@ npm i
 npm run dev
 ```
 
+## Running the Telegram Bot
+
+This project also includes a Telegram bot located in the `telegram_location_bot` directory. To set up and run the bot:
+
+### Prerequisites
+- Python 3.x installed
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+
+### Setup Steps
+
+```sh
+# Step 1: Navigate to the bot directory
+cd telegram_location_bot
+
+# Step 2: Install Python dependencies
+pip install -r requirements.txt
+
+# Step 3: Configure the bot
+# Edit the .env file and replace YOUR_BOT_TOKEN_HERE with your actual bot token
+# You can get a bot token by messaging @BotFather on Telegram
+
+# Step 4: Run the bot
+python3 app.py
+```
+
+### Bot Configuration
+
+The bot uses environment variables for configuration. Edit the `.env` file in the `telegram_location_bot` directory:
+
+- `BOT_TOKEN`: Your Telegram bot token (required)
+- `SECRET_KEY`: Flask secret key for sessions
+- `DATABASE_URL`: Database connection string (defaults to SQLite)
+- `ADMIN_USERNAME`: Admin username for the web interface
+- `ADMIN_PASSWORD`: Admin password for the web interface
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).
