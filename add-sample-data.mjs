@@ -18,7 +18,7 @@ const sampleLocations = [
     rating: 4.8,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Tower Bridge',
@@ -29,7 +29,7 @@ const sampleLocations = [
     rating: 4.7,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Big Ben',
@@ -40,7 +40,7 @@ const sampleLocations = [
     rating: 4.9,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Oxford Street',
@@ -51,7 +51,7 @@ const sampleLocations = [
     rating: 4.5,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Camden Market',
@@ -62,7 +62,7 @@ const sampleLocations = [
     rating: 4.6,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Oxford University',
@@ -73,7 +73,7 @@ const sampleLocations = [
     rating: 4.8,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Oxford Castle',
@@ -84,7 +84,7 @@ const sampleLocations = [
     rating: 4.3,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Chipping Campden',
@@ -95,7 +95,7 @@ const sampleLocations = [
     rating: 4.7,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   },
   {
     name: 'Bourton-on-the-Water',
@@ -106,7 +106,7 @@ const sampleLocations = [
     rating: 4.6,
     active: true,
     visits: 0,
-    created_by: 'system'
+    created_by: null
   }
 ];
 
@@ -118,7 +118,7 @@ async function addSampleData() {
     await supabase
       .from('locations')
       .delete()
-      .eq('created_by', 'system');
+      .is('created_by', null);
     
     // Insert sample data
     const { data, error } = await supabase
@@ -137,7 +137,7 @@ async function addSampleData() {
     const { data: locations, error: fetchError } = await supabase
       .from('locations')
       .select('*')
-      .eq('created_by', 'system');
+      .is('created_by', null);
     
     if (fetchError) {
       console.error('❌ Error verifying data:', fetchError);
