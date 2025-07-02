@@ -160,21 +160,52 @@ serve(async (req) => {
           if (!argsText) {
             payload.text = `Please provide a search term. Example: /${cmd} London`;
           } else {
-            // Query locations
-            const { data: locations, error } = await supabase
+            // Query locations - search in both name and address, and optionally filter by type
+            let query = supabase
               .from('locations')
               .select('*')
-              .eq('type', cmd)
-              .ilike('address', `%${argsText}%`)
+              .or(`name.ilike.%${argsText}%,address.ilike.%${argsText}%`)
               .eq('active', true)
               .order('name')
-              .limit(5);
+              .limit(10);
+            
+            // If searching for specific type, add type filter
+            if (cmd !== 'postcode') {
+              // For postcode, don't filter by type, just search in address/name
+              query = query.eq('type', cmd);
+            }
+            
+            const { data: locations, error } = await query;
               
             if (error) {
               console.error("Error fetching locations:", error);
               payload.text = "Sorry, there was an error processing your search.";
             } else if (!locations || locations.length === 0) {
-              payload.text = `No ${cmd}s found matching "${argsText}". Try a different search.`;
+              // If no results, try a broader search without type filter
+              const { data: broadLocations } = await supabase
+                .from('locations')
+                .select('*')
+                .or(`name.ilike.%${argsText}%,address.ilike.%${argsText}%`)
+                .eq('active', true)
+                .order('name')
+                .limit(10);
+              
+              if (broadLocations && broadLocations.length > 0) {
+                payload.text = `Found ${broadLocations.length} location(s) matching "${argsText}" (broader search):\n\n`;
+                broadLocations.forEach((loc) => {
+                  payload.text += `📍 ${loc.name}\nAddress: ${loc.address}\nType: ${loc.type || 'Unknown'}\nRating: ${'★'.repeat(Math.round(loc.rating || 0))}${'☆'.repeat(5-Math.round(loc.rating || 0))}\n\n`;
+                });
+                
+                // Update visit counts
+                for (const loc of broadLocations) {
+                  await supabase
+                    .from('locations')
+                    .update({ visits: (loc.visits || 0) + 1 })
+                    .eq('id', loc.id);
+                }
+              } else {
+                payload.text = `No locations found matching "${argsText}". Try a different search term or check if locations are available in the database.`;
+              }
             } else {
               payload.text = `Found ${locations.length} ${cmd}(s) matching "${argsText}":\n\n`;
               
