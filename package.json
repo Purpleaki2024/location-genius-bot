@@ -12,7 +12,8 @@
     "bot:deploy": "./deploy-bot.sh",
     "bot:cleanup": "./cleanup-python-bot.sh",
     "bot:test-setup": "./setup-bot-testing.sh",
-    "bot:quick-fix": "cat QUICK_FIX_SQL.sql"
+    "bot:quick-fix": "cat QUICK_FIX_SQL.sql",
+    "bot:add-data": "node add-sample-data.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
