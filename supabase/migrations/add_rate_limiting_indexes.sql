@@ -8,7 +8,7 @@ ON user_activities(telegram_user_id, activity_type, created_at);
 -- Add a partial index for recent activities (last hour) for better performance
 CREATE INDEX IF NOT EXISTS idx_user_activities_recent 
 ON user_activities(telegram_user_id, activity_type, created_at)
-WHERE created_at >= (NOW() - INTERVAL '1 hour');
+WHERE created_at >= (CURRENT_TIMESTAMP - INTERVAL '1 hour');
 
 -- Create a function to clean up old activity records (for maintenance)
 CREATE OR REPLACE FUNCTION cleanup_old_activities()
@@ -16,7 +16,7 @@ RETURNS void AS $$
 BEGIN
   -- Delete activities older than 7 days
   DELETE FROM user_activities 
-  WHERE created_at < (NOW() - INTERVAL '7 days');
+  WHERE created_at < (CURRENT_TIMESTAMP - INTERVAL '7 days');
 END;
 $$ LANGUAGE plpgsql;
 
