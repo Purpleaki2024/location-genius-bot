@@ -8,7 +8,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "bot:deploy": "./deploy-bot.sh",
+    "bot:cleanup": "./cleanup-python-bot.sh",
+    "bot:logs": "supabase functions logs telegram-webhook"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
