@@ -1,91 +1,99 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Load environment variables
+// Load environment variables (use service role key for admin operations)
 const supabaseUrl = 'https://clyhambeojuiuogdtyog.supabase.co'
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseWhhbWJlb2Vvamdlb2p1aXVvZ2R0eW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyODEzMTUsImV4cCI6MjA2Mjg1NzMxNX0.G3UxW-iNstSoEaiwpOPqKzX03R0Jlf2IAaBShrNvyM0'
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseWhhbWJlb2Vvamdlb2p1aXVvZ2R0eW9nIiwicm9zZSI6ImFub24iLCJpYXQiOjE3NDcyODEzMTUsImV4cCI6MjA2Mjg1NzMxNX0.G3UxW-iNstSoEaiwpOPqKzX03R0Jlf2IAaBShrNvyM0'
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 const sampleLocations = [
   {
     name: 'London Eye',
     address: 'Westminster Bridge Rd, Bishop\'s, London SE1 7PB, UK',
     type: 'city',
-    latitude: '51.5033',
-    longitude: '-0.1196',
+    lat: 51.5033,
+    lng: -0.1196,
     rating: 4.8,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'Iconic observation wheel on the South Bank'
   },
   {
     name: 'Tower Bridge',
     address: 'Tower Bridge Rd, London SE1 2UP, UK',
     type: 'city',
-    latitude: '51.5055',
-    longitude: '-0.0754',
+    lat: 51.5055,
+    lng: -0.0754,
     rating: 4.7,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'Historic bridge with glass floor walkways'
   },
   {
     name: 'Big Ben',
     address: 'Westminster, London SW1A 0AA, UK',
     type: 'city',
-    latitude: '51.4994',
-    longitude: '-0.1245',
+    lat: 51.4994,
+    lng: -0.1245,
     rating: 4.9,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'Famous clock tower at Houses of Parliament'
   },
   {
     name: 'Oxford Street',
     address: 'Oxford St, London, UK',
     type: 'city',
-    latitude: '51.5154',
-    longitude: '-0.1423',
+    lat: 51.5154,
+    lng: -0.1423,
     rating: 4.5,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'Major shopping street in Central London'
   },
   {
     name: 'Camden Market',
     address: 'Buck St, London NW1 8AB, UK',
     type: 'city',
-    latitude: '51.5414',
-    longitude: '-0.1460',
+    lat: 51.5414,
+    lng: -0.1460,
     rating: 4.6,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'Alternative market with unique shops and food'
   },
   {
     name: 'Oxford University',
     address: 'Wellington Square, Oxford OX1 2JD, UK',
     type: 'town',
-    latitude: '51.7548',
-    longitude: '-1.2544',
+    lat: 51.7548,
+    lng: -1.2544,
     rating: 4.8,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'World-renowned university and historic buildings'
   },
   {
     name: 'Oxford Castle',
     address: 'New Rd, Oxford OX1 1AY, UK',
     type: 'town',
-    latitude: '51.7520',
-    longitude: '-1.2613',
+    lat: 51.7520,
+    lng: -1.2613,
     rating: 4.3,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'Medieval castle with guided tours'
   },
   {
     name: 'Chipping Campden',
     address: 'High St, Chipping Campden GL55 6AT, UK',
     type: 'village',
-    latitude: '52.0418',
-    longitude: '-1.7814',
+    lat: 52.0418,
+    lng: -1.7814,
     rating: 4.7,
     active: true,
-    visits: 0
+    visits: 0,
+    description: 'Beautiful Cotswolds market town'
   }
 ]
 

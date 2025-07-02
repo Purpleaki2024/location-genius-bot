@@ -11,8 +11,8 @@
     "preview": "vite preview",
     "bot:deploy": "./deploy-bot.sh",
     "bot:cleanup": "./cleanup-python-bot.sh",
-    "bot:logs": "supabase functions logs telegram-webhook",
-    "bot:test-setup": "./setup-bot-testing.sh"
+    "bot:test-setup": "./setup-bot-testing.sh",
+    "bot:quick-fix": "cat QUICK_FIX_SQL.sql"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
