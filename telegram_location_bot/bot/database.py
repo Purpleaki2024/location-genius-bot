@@ -1,16 +1,12 @@
 """Database setup and helper functions."""
+# Database setup for Supabase/PostgreSQL
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from bot import config
 from admin import models
-import sqlite3
 
-# Create database engine
-# Enable check_same_thread for SQLite if using threading
-connect_args = {}
-if config.DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-engine = create_engine(config.DATABASE_URL, echo=False, future=True, connect_args=connect_args)
+# Create database engine (Supabase/PostgreSQL)
+engine = create_engine(config.DATABASE_URL, echo=False, future=True)
 
 # Create session factory
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -18,24 +14,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 # Create tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
-# Ensure the table exists
-DB_PATH = config.DATABASE_URL.split("///")[-1]  # Extract SQLite file path from DATABASE_URL
-conn = sqlite3.connect(DB_PATH)
-cursor = conn.cursor()
-cursor.execute(
-    """
-    CREATE TABLE IF NOT EXISTS analysis_results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        text TEXT,
-        sentiment TEXT,
-        details TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """
-)
-conn.commit()
-conn.close()
+# Manual SQLite-specific table creation removed; all tables are managed via SQLAlchemy metadata
 
 # Initial admin user setup
 def init_admin_user():
