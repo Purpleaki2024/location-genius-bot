@@ -429,6 +429,182 @@ async function handleTextSearch(
   return payload;
 }
 
+// Handler: Process /start command
+async function handleStartCommand(
+  supabase: any,
+  telegramBotToken: string,
+  message: any
+): Promise<void> {
+  const welcomeMessage = `Welcome to the bot! Use /help to see available commands.`;
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: welcomeMessage
+  });
+}
+
+// Handler: Process /help command
+async function handleHelpCommand(
+  telegramBotToken: string,
+  message: any
+): Promise<void> {
+  const helpMessage = `Available commands:\n/start - Welcome message\n/help - List commands\n/invite - Get invite link\n/stats - View bot stats\n/promote - Promote a user\n/demote - Demote a user\n/setpassword - Set user password\n/backup - Backup database`;
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: helpMessage
+  });
+}
+
+// Handler: Process /invite command
+async function handleInviteCommand(
+  telegramBotToken: string,
+  message: any
+): Promise<void> {
+  const inviteLink = `https://t.me/your_bot?start=invite`;
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: `Here is your invite link: ${inviteLink}`
+  });
+}
+
+// Handler: Process /stats command
+async function handleStatsCommand(
+  supabase: any,
+  telegramBotToken: string,
+  message: any
+): Promise<void> {
+  const { data, error } = await supabase.rpc("get_stats");
+  if (error) {
+    console.error("Error fetching stats:", error);
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Failed to fetch stats. Please try again later."
+    });
+    return;
+  }
+
+  const statsMessage = `Bot Statistics:\nTotal Users: ${data.total_users}\nAdmin Users: ${data.admin_users}\nTotal Locations: ${data.total_locations}`;
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: statsMessage
+  });
+}
+
+// Handler: Process /promote command
+async function handlePromoteCommand(
+  supabase: any,
+  telegramBotToken: string,
+  message: any,
+  argsText: string
+): Promise<void> {
+  const { error } = await supabase.rpc("promote_user", { user_identifier: argsText });
+  if (error) {
+    console.error("Error promoting user:", error);
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Failed to promote user. Please check the identifier and try again."
+    });
+    return;
+  }
+
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: `User ${argsText} has been promoted to admin.`
+  });
+}
+
+// Handler: Process /demote command
+async function handleDemoteCommand(
+  supabase: any,
+  telegramBotToken: string,
+  message: any,
+  argsText: string
+): Promise<void> {
+  const { error } = await supabase.rpc("demote_user", { user_identifier: argsText });
+  if (error) {
+    console.error("Error demoting user:", error);
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Failed to demote user. Please check the identifier and try again."
+    });
+    return;
+  }
+
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: `User ${argsText} has been demoted.`
+  });
+}
+
+// Handler: Process /setpassword command
+async function handleSetPasswordCommand(
+  supabase: any,
+  telegramBotToken: string,
+  message: any,
+  argsText: string
+): Promise<void> {
+  const [identifier, newPassword] = argsText.split(" ", 2);
+  if (!identifier || !newPassword) {
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Usage: /setpassword <user_id|username> <new_password>"
+    });
+    return;
+  }
+
+  const { error } = await supabase.rpc("set_user_password", { user_identifier: identifier, password: newPassword });
+  if (error) {
+    console.error("Error setting password:", error);
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Failed to set password. Please check the identifier and try again."
+    });
+    return;
+  }
+
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: `Password for user ${identifier} has been updated.`
+  });
+}
+
+// Handler: Process /backup command
+async function handleBackupCommand(
+  supabase: any,
+  telegramBotToken: string,
+  message: any
+): Promise<void> {
+  const backupPath = `/backups/backup_${Date.now()}.sql`;
+  const { error } = await supabase.rpc("create_backup", { path: backupPath });
+  if (error) {
+    console.error("Error creating backup:", error);
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Failed to create backup. Please try again later."
+    });
+    return;
+  }
+
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: `Backup created successfully at ${backupPath}.`
+  });
+}
+
+// Add RBAC enforcement
+async function enforceAdminRBAC(supabase: any, telegramUserId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("telegram_users")
+    .select("is_admin")
+    .eq("telegram_id", telegramUserId)
+    .single();
+
+  if (error || !data || !data.is_admin) {
+    return false;
+  }
+
+  return true;
+}
+
 // Helper function to retry operations with exponential backoff
 async function retryOperation<T>(
   operation: () => Promise<T>,
