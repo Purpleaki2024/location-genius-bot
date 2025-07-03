@@ -21,6 +21,7 @@ const CONFIG = {
   },
   MAX_QUERY_LENGTH: 100,
   ALLOWED_SEARCH_CHARS: /^[a-zA-Z0-9\s\-.,#&'()]+$/,
+  VERSION: "1.0.1", // Added version for debugging
 };
 
 // Helper function to validate Telegram update structure
@@ -520,6 +521,14 @@ serve(async (req) => {
   }
 
   try {
+    // Debug: Log available environment variables (without exposing sensitive data)
+    console.log("Environment check:", {
+      hasTelegramToken: !!Deno.env.get("TELEGRAM_BOT_TOKEN"),
+      hasBotToken: !!Deno.env.get("BOT_TOKEN"),
+      hasSupabaseUrl: !!Deno.env.get("SUPABASE_URL"),
+      hasSupabaseKey: !!Deno.env.get("SUPABASE_ANON_KEY")
+    });
+    
     // Get the telegram bot token from environment (try multiple variable names)
     const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || Deno.env.get("BOT_TOKEN");
     
@@ -731,8 +740,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error processing webhook:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage, details: "Check function logs for more information" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
