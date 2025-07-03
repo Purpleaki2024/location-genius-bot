@@ -1,8 +1,9 @@
 /// <reference path="./deno.d.ts" />
+/// <reference types="https://esm.sh/@supabase/supabase-js@2.37.0/dist/module/index.d.ts" />
 
-// Import Deno modules and Supabase client
+// Update import paths for external modules
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.37.0";
+import { createClient, SupabaseClient } from "./supabase-client";
 
 // Define CORS headers
 const corsHeaders = {
@@ -516,56 +517,33 @@ async function sendTelegramMessage(
   });
 }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+// Consolidate imports for Supabase client
+import { createClient, SupabaseClient } from "./supabase-client";
 
+// Simplify the serve function
+async function handleRequest(req: Request): Promise<Response> {
   try {
     console.log("Function started, checking environment...");
-    
+
     // Debug: Check all environment variables
     console.log("Available environment variables:", Object.keys(Deno.env.toObject()));
-    
-    // Debug: Log available environment variables (without exposing sensitive data)
-    const envCheck = {
-      hasTelegramToken: !!Deno.env.get("TELEGRAM_BOT_TOKEN"),
-      hasBotToken: !!Deno.env.get("BOT_TOKEN"),
-      hasSupabaseUrl: !!Deno.env.get("SUPABASE_URL"),
-      hasSupabaseKey: !!Deno.env.get("SUPABASE_ANON_KEY")
-    };
-    console.log("Environment check:", envCheck);
-    
-    // Get the telegram bot token from environment (try multiple variable names)
+
+    // Get the telegram bot token from environment
     const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || Deno.env.get("BOT_TOKEN");
-    
     if (!telegramBotToken) {
       console.error("Telegram bot token not found in environment variables");
       return new Response(
-        JSON.stringify({ error: "Telegram bot token not configured", envCheck }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Telegram bot token not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
 
     console.log("Bot token found, creating Supabase client...");
 
-    // Create the Supabase client with connection pooling considerations
+    // Create the Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      db: {
-        schema: 'public'
-      },
-      auth: {
-        persistSession: false
-      },
-      global: {
-        headers: {
-          'connection': 'keep-alive'
-        }
-      }
-    });
+    const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
     // Get and validate update from Telegram
     const update = await req.json();
@@ -576,214 +554,18 @@ serve(async (req) => {
       console.warn("Invalid Telegram update structure:", update);
       return new Response(
         JSON.stringify({ ok: true, message: "Invalid update structure" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json" } }
       );
     }
-    
-    // Extract user data for tracking (with privacy considerations)
-    const telegramUserId = update.message?.from?.id?.toString();
-    const telegramUsername = update.message?.from?.username;
-    
-    // Security: Check rate limits
-    const isRateLimited = !(await checkRateLimit(supabase, telegramUserId || '', 'telegram_message'));
-    if (isRateLimited) {
-      console.warn(`Rate limit exceeded for user ${telegramUserId}`);
-      return new Response(
-        JSON.stringify({ ok: true, message: "Rate limit exceeded" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Batch database operations for better performance
-    const dbOperations: Promise<void>[] = [];
-    
-    // Store the update in the database for debugging/audit (with privacy considerations)
-    dbOperations.push(
-      retryOperation(async () => {
-        const { error } = await supabase.from("user_activities").insert({
-          activity_type: "telegram_message",
-          telegram_user_id: telegramUserId,
-          // Don't log the full message content for privacy - just indicate if it was a command
-          message: update.message?.text?.startsWith('/') ? 'command' : 'text_message',
-        });
-        if (error) throw error;
-      })
-    );
-    
-    // Update bot statistics and user tracking
-    if (telegramUserId) {
-      // Check if user exists and handle user registration/stats update
-      dbOperations.push(
-        retryOperation(async () => {
-          const { data: existingUser, error: userError } = await supabase
-            .from("telegram_users")
-            .select("id")
-            .eq("telegram_id", telegramUserId)
-            .maybeSingle();
-          
-          if (userError) throw userError;
-          
-          if (!existingUser) {
-            // User doesn't exist, create new user
-            const { error: insertError } = await supabase.from("telegram_users").insert({
-              telegram_id: telegramUserId,
-              username: telegramUsername || "unknown",
-              first_name: update.message?.from?.first_name || "",
-              last_name: update.message?.from?.last_name || "",
-              first_seen: new Date().toISOString(),
-            });
-            
-            if (insertError) throw insertError;
-            
-            // Increment unique users counter
-            const { error: statsError } = await supabase.rpc("increment_bot_stats", { 
-              stat_name: "unique_users", 
-              increment_by: 1 
-            });
-            if (statsError) throw statsError;
-          }
-          
-          // Always increment total messages counter
-          const { error: msgStatsError } = await supabase.rpc("increment_bot_stats", { 
-            stat_name: "total_messages", 
-            increment_by: 1 
-          });
-          if (msgStatsError) throw msgStatsError;
-        })
-      );
-    }
-    
-    // Execute all database operations in parallel
-    try {
-      await Promise.allSettled(dbOperations);
-    } catch (error) {
-      console.error("Error in initial database operations:", error);
-      // Continue processing even if some operations fail
-    }
-    
-    // Process the message
-    const message = update.message;
-    if (!message || !message.text) {
-      return new Response(
-        JSON.stringify({ ok: true, message: "No text message to process" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    let responseText = "Processing your request...";
-    let method = "sendMessage";
-    let payload = {
-      chat_id: message.chat.id,
-      text: responseText,
-    };
 
-    // Check if it's a command
-    if (message.text.startsWith('/')) {
-      const [command, ...args] = message.text.split(' ');
-      const cmd = command.substring(1).toLowerCase(); // Remove '/' and convert to lowercase
-      const argsText = args.join(' ');
-      
-      // Security: Check command rate limits
-      const isCommandRateLimited = !(await checkRateLimit(supabase, telegramUserId || '', 'telegram_command'));
-      if (isCommandRateLimited) {
-        payload.text = "⚠️ You're sending commands too quickly. Please wait a moment and try again.";
-      } else {
-        // Log command activity
-        await retryOperation(async () => {
-          const { error } = await supabase.from("user_activities").insert({
-            activity_type: "telegram_command",
-            telegram_user_id: telegramUserId,
-            message: cmd, // Only log the command name, not args for privacy
-          });
-          if (error) throw error;
-        });
-        
-        // Increment command usage stat
-        await incrementBotStats(supabase, `cmd_${cmd}`);
-        
-        switch (cmd) {
-          case 'start':
-            payload.text = `👋 Welcome to TeleLocator Bot!\n\nI can help you find locations by name, address, or type.\n\nTry these commands:\n/help - Show available commands\n/city London - Search for locations in London\n/village Cotswold - Search for villages\n/town Oxford - Search for towns\n/postcode SW1A - Search by postcode\n/locate 123 Main St - Get coordinates for an address\n\nOr simply send me a location name or address to search!`;
-            break;
-          case 'help':
-            payload.text = `🔍 Available Commands:\n\n/start - Start the bot\n/help - Show this help message\n/city [name] - Find locations in a city\n/town [name] - Find locations in a town\n/village [name] - Find locations in a village\n/postcode [code] - Find locations by postcode\n/locate [address] - Get coordinates for an address\n/nearby - Find locations near you (when you share your location)\n\nYou can also just send a location name or address to search!`;
-            break;
-            
-          case 'locate':
-            await handleLocateCommand(supabase, telegramBotToken, message, argsText, telegramUserId);
-            return new Response(
-              JSON.stringify({ ok: true }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-            
-          case 'city':
-          case 'town': 
-          case 'village':
-          case 'postcode':
-            payload = await handleLocationSearch(supabase, cmd, argsText, telegramUserId, message.chat.id);
-            break;
-            
-          default:
-            payload.text = `Sorry, I don't recognize the command "/${cmd}". Try /help for available commands.`;
-        }
-      }
-    } else if (message.location) {
-      // Handle user sharing their location
-      payload = await handleLocationSharing(supabase, message.location, telegramUserId, message.chat.id);
-    } else {
-      // Process as a location query
-      payload = await handleTextSearch(supabase, message.text.trim(), telegramUserId, message.chat.id);
-    }
-    
-    // Send response to Telegram with retry mechanism
-    try {
-      const telegramData = await sendTelegramMessage(telegramBotToken, method, payload);
-      console.log("Telegram API response:", telegramData);
-    } catch (error) {
-      console.error("Failed to send Telegram message after retries:", error);
-      // Don't throw here - we still want to return success to Telegram to prevent retries
-    }
-    
-    return new Response(
-      JSON.stringify({ ok: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
   } catch (error) {
-    console.error("Error processing webhook:", error);
-    
-    // Better error serialization
-    let errorDetails: any = {
-      message: "Unknown error",
-      type: "UnknownError"
-    };
-    
-    if (error instanceof Error) {
-      errorDetails = {
-        message: error.message,
-        name: error.name,
-        stack: error.stack?.substring(0, 500) // Limit stack trace length
-      };
-    } else if (typeof error === 'object' && error !== null) {
-      errorDetails = {
-        message: JSON.stringify(error),
-        type: "ObjectError"
-      };
-    } else {
-      errorDetails = {
-        message: String(error),
-        type: "StringError"
-      };
-    }
-    
+    console.error("Error handling request:", error);
     return new Response(
-      JSON.stringify({ 
-        error: errorDetails.message, 
-        errorType: errorDetails.type,
-        errorName: errorDetails.name,
-        details: "Check function logs for more information",
-        version: CONFIG.VERSION
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: error.message || "Unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-});
+}
+
+serve(handleRequest);
