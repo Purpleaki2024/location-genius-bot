@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "start": "vite preview",
     "bot:deploy": "./deploy-bot.sh",
     "bot:cleanup": "./cleanup-python-bot.sh",
     "bot:test-setup": "./setup-bot-testing.sh",
