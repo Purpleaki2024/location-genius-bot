@@ -3,7 +3,7 @@
 
 // Update import paths for external modules
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "./supabaseClient";
+import { createClient } from "./supabaseClient.ts";
 
 // Define CORS headers
 const corsHeaders = {
