@@ -1,9 +1,14 @@
 #!/bin/bash
 
+# Load environment variables from .env file
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
+
 # Ensure environment variables are set
 if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ] || [ -z "$TELEGRAM_BOT_TOKEN" ]; then
   echo "Error: Required environment variables are not set."
-  echo "Please set SUPABASE_URL, SUPABASE_ANON_KEY, and TELEGRAM_BOT_TOKEN."
+  echo "Please set SUPABASE_URL, SUPABASE_ANON_KEY, and TELEGRAM_BOT_TOKEN in the .env file."
   exit 1
 fi
 
