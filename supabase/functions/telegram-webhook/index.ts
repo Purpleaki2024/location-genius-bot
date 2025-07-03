@@ -10,7 +10,10 @@ import type {
   TelegramLocation,
   SupabaseClient, 
   SupabaseLocation, 
-  LogSearchParams 
+  LogSearchParams,
+  SearchResult,
+  LogActivityData,
+  TelegramResponse
 } from "./types.ts";
 
 // Define CORS headers
@@ -95,7 +98,7 @@ async function checkRateLimit(supabase: SupabaseClient, telegramUserId: string, 
 }
 
 // Utility: Format location message (reduces code duplication)
-function formatLocationMessage(location: any): string {
+function formatLocationMessage(location: SupabaseLocation): string {
   const rating = Math.round(location.rating || 0);
   const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
   
@@ -106,7 +109,7 @@ function formatLocationMessage(location: any): string {
 }
 
 // Utility: Build location search query (reduces code duplication)
-function buildLocationQuery(supabase: any, searchTerm: string, locationType?: string, limit: number = 10) {
+function buildLocationQuery(supabase: SupabaseClient, searchTerm: string, locationType?: string, limit: number = 10) {
   let query = supabase
     .from('locations')
     .select('*')
@@ -124,11 +127,11 @@ function buildLocationQuery(supabase: any, searchTerm: string, locationType?: st
 
 // Utility: Execute database search with retry (reduces code duplication)
 async function executeLocationSearch(
-  supabase: any, 
+  supabase: SupabaseClient, 
   searchTerm: string, 
   locationType?: string, 
   limit: number = 10
-): Promise<{ data: any[] | null; error: any }> {
+): Promise<SearchResult> {
   const sanitizedTerm = sanitizeSearchQuery(searchTerm);
   if (!sanitizedTerm) {
     return { data: null, error: new Error('Invalid search term') };
@@ -144,19 +147,14 @@ async function executeLocationSearch(
 
 // Utility: Log search activity with privacy consideration
 async function logSearchActivity(
-  supabase: any,
-  params: {
-    query?: string;
-    telegramUserId?: string;
-    latitude?: string;
-    longitude?: string;
-    queryType: string;
-  }
+  supabase: SupabaseClient,
+  params: LogSearchParams
 ): Promise<void> {
   try {
     await retryOperation(async () => {
       // Only log non-sensitive data
-      const logData: any = {
+      const logData: LogActivityData = {
+        activity_type: 'search',
         query_type: params.queryType,
         telegram_user_id: params.telegramUserId,
       };
@@ -181,7 +179,7 @@ async function logSearchActivity(
 }
 
 // Utility: Increment bot stats with error handling
-async function incrementBotStats(supabase: any, statName: string, incrementBy: number = 1): Promise<void> {
+async function incrementBotStats(supabase: SupabaseClient, statName: string, incrementBy: number = 1): Promise<void> {
   try {
     await retryOperation(async () => {
       const { error } = await supabase.rpc("increment_bot_stats", { 
@@ -197,9 +195,9 @@ async function incrementBotStats(supabase: any, statName: string, incrementBy: n
 
 // Handler: Process locate command
 async function handleLocateCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any,
+  message: TelegramMessage,
   argsText: string,
   telegramUserId?: string
 ): Promise<void> {
@@ -255,12 +253,12 @@ async function handleLocateCommand(
 
 // Handler: Process location search commands (city, town, village, postcode)
 async function handleLocationSearch(
-  supabase: any,
+  supabase: SupabaseClient,
   cmd: string,
   argsText: string,
   telegramUserId: string | undefined,
   chatId: number
-): Promise<any> {
+): Promise<TelegramResponse> {
   const payload = { chat_id: chatId, text: "" };
   
   if (!argsText) {
@@ -330,11 +328,11 @@ async function handleLocationSearch(
 
 // Handler: Process location sharing
 async function handleLocationSharing(
-  supabase: any,
-  location: { latitude: number; longitude: number },
+  supabase: SupabaseClient,
+  location: TelegramLocation,
   telegramUserId: string | undefined,
   chatId: number
-): Promise<any> {
+): Promise<TelegramResponse> {
   const payload = { chat_id: chatId, text: "" };
   
   try {
@@ -385,11 +383,11 @@ async function handleLocationSharing(
 
 // Handler: Process text search
 async function handleTextSearch(
-  supabase: any,
+  supabase: SupabaseClient,
   query: string,
   telegramUserId: string | undefined,
   chatId: number
-): Promise<any> {
+): Promise<TelegramResponse> {
   const payload = { chat_id: chatId, text: "" };
   
   // Security: Check search rate limits
@@ -463,7 +461,7 @@ async function retryOperation<T>(
 }
 
 // Helper function to batch update visit counts
-async function batchUpdateVisitCounts(supabase: any, locations: any[]): Promise<void> {
+async function batchUpdateVisitCounts(supabase: SupabaseClient, locations: SupabaseLocation[]): Promise<void> {
   if (!locations || locations.length === 0) return;
   
   try {
@@ -486,7 +484,7 @@ async function batchUpdateVisitCounts(supabase: any, locations: any[]): Promise<
 }
 
 // Fallback function for individual visit count updates
-async function fallbackVisitCountUpdate(supabase: any, locations: any[]): Promise<void> {
+async function fallbackVisitCountUpdate(supabase: SupabaseClient, locations: SupabaseLocation[]): Promise<void> {
   const updatePromises = locations.map(async (loc) => {
     try {
       await retryOperation(async () => {
@@ -509,8 +507,8 @@ async function fallbackVisitCountUpdate(supabase: any, locations: any[]): Promis
 async function sendTelegramMessage(
   telegramBotToken: string, 
   method: string, 
-  payload: any
-): Promise<any> {
+  payload: Record<string, unknown>
+): Promise<unknown> {
   return await retryOperation(async () => {
     const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/${method}`, {
       method: "POST",
@@ -525,9 +523,6 @@ async function sendTelegramMessage(
     return await response.json();
   });
 }
-
-// Consolidate imports for Supabase client
-import { createClient } from "./supabaseClient";
 
 // Simplify the serve function
 async function handleRequest(req: Request): Promise<Response> {

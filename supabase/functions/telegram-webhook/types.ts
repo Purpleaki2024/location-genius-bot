@@ -72,8 +72,30 @@ export interface SupabaseClient {
       eq(column: string, value: unknown): Promise<{ error: Error | null }>;
     };
     insert(values: Record<string, unknown>): Promise<{ error: Error | null }>;
+    upsert(values: Record<string, unknown>): Promise<{ error: Error | null }>;
   };
   rpc(functionName: string, params: Record<string, unknown>): Promise<{ error: Error | null }>;
+}
+
+export interface SearchResult {
+  data: SupabaseLocation[] | null;
+  error: Error | null;
+}
+
+export interface TelegramResponse {
+  chat_id: number;
+  text: string;
+  parse_mode?: string;
+}
+
+export interface LogActivityData {
+  activity_type: string;
+  telegram_user_id?: string;
+  query?: string;
+  latitude?: string;
+  longitude?: string;
+  query_type: string;
+  created_at?: string;
 }
 
 export interface LogSearchParams {
