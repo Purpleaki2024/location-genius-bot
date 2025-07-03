@@ -3,7 +3,7 @@
 
 // Update import paths for external modules
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient, SupabaseClient } from "./supabase-client";
+import { createClient } from "./supabaseClient";
 
 // Define CORS headers
 const corsHeaders = {
@@ -518,7 +518,7 @@ async function sendTelegramMessage(
 }
 
 // Consolidate imports for Supabase client
-import { createClient, SupabaseClient } from "./supabase-client";
+import { createClient } from "./supabaseClient";
 
 // Simplify the serve function
 async function handleRequest(req: Request): Promise<Response> {
@@ -543,7 +543,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // Create the Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Get and validate update from Telegram
     const update = await req.json();
@@ -557,6 +557,9 @@ async function handleRequest(req: Request): Promise<Response> {
         { headers: { "Content-Type": "application/json" } }
       );
     }
+
+    // Use the Supabase client for database operations
+    console.log("Using Supabase client for database operations...");
 
     return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
   } catch (error) {
