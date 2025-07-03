@@ -6,35 +6,13 @@ from werkzeug.security import check_password_hash
 import pyotp
 from admin.models import User
 
-def authenticate_user(username, password):
-    from bot.database import SessionLocal  # moved import inside function to avoid circular import
-    """Verify username and password. Returns User object if valid and user is admin & active, else None."""
-    session_db = SessionLocal()
-    try:
-        user = session_db.query(User).filter(User.username == username, User.is_admin == True, User.is_active == True).first()
-        if not user:
-            return None
-        # If user has no password set or password is incorrect
-        if not user.password_hash or not check_password_hash(user.password_hash, password):
-            return None
-        # Authentication successful
-        # Detach user before closing session (to use outside)
-        session_db.expunge(user)
-        return user
-    finally:
-        session_db.close()
+# Deprecate authenticate_user and verify_totp functions
+# These functions are redundant with Supabase authentication and 2FA mechanisms.
+# def authenticate_user(username, password):
+#     pass
 
-def verify_totp(user, code):
-    """Verify a 2FA TOTP code for the given user. Returns True if valid or if user has no TOTP secret (i.e., 2FA not set)."""
-    if not user.totp_secret:
-        return True
-    try:
-        totp = pyotp.TOTP(user.totp_secret)
-        # Allow some drift by default parameters
-        return totp.verify(code)
-    except Exception as e:
-        print(f"TOTP verification error: {e}")
-        return False
+# def verify_totp(user, code):
+#     pass
 
 def login_required(func):
     """Flask route decorator to require admin login (including 2FA)."""
