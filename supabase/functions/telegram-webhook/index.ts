@@ -521,13 +521,16 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Function started, checking environment...");
+    
     // Debug: Log available environment variables (without exposing sensitive data)
-    console.log("Environment check:", {
+    const envCheck = {
       hasTelegramToken: !!Deno.env.get("TELEGRAM_BOT_TOKEN"),
       hasBotToken: !!Deno.env.get("BOT_TOKEN"),
       hasSupabaseUrl: !!Deno.env.get("SUPABASE_URL"),
       hasSupabaseKey: !!Deno.env.get("SUPABASE_ANON_KEY")
-    });
+    };
+    console.log("Environment check:", envCheck);
     
     // Get the telegram bot token from environment (try multiple variable names)
     const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || Deno.env.get("BOT_TOKEN");
@@ -535,10 +538,12 @@ serve(async (req) => {
     if (!telegramBotToken) {
       console.error("Telegram bot token not found in environment variables");
       return new Response(
-        JSON.stringify({ error: "Telegram bot token not configured" }),
+        JSON.stringify({ error: "Telegram bot token not configured", envCheck }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+    
+    console.log("Bot token found, creating Supabase client...");
     
     // Create the Supabase client with connection pooling considerations
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
