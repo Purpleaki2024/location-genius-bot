@@ -1,8 +1,10 @@
-
 /// <reference path="./deno.d.ts" />
+
+// Import Deno modules and Supabase client
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.37.0";
 
+// Define CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -545,9 +547,9 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
+
     console.log("Bot token found, creating Supabase client...");
-    
+
     // Create the Supabase client with connection pooling considerations
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
@@ -564,11 +566,11 @@ serve(async (req) => {
         }
       }
     });
-    
+
     // Get and validate update from Telegram
     const update = await req.json();
     console.log("Received update:", JSON.stringify(update));
-    
+
     // Validate the Telegram update structure
     if (!validateTelegramUpdate(update)) {
       console.warn("Invalid Telegram update structure:", update);
