@@ -1,9 +1,17 @@
-/// <reference path="./deno.d.ts" />
-/// <reference types="https://esm.sh/@supabase/supabase-js@2.37.0/dist/module/index.d.ts" />
+// Type definitions for Deno and Supabase
+// @deno-types="./deno.d.ts"
 
 // Update import paths for external modules
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "./supabaseClient.ts";
+import type { 
+  TelegramUpdate, 
+  TelegramMessage, 
+  TelegramLocation,
+  SupabaseClient, 
+  SupabaseLocation, 
+  LogSearchParams 
+} from "./types.ts";
 
 // Define CORS headers
 const corsHeaders = {
@@ -28,11 +36,12 @@ const CONFIG = {
 };
 
 // Helper function to validate Telegram update structure
-function validateTelegramUpdate(update: any): boolean {
+function validateTelegramUpdate(update: unknown): update is TelegramUpdate {
   if (!update || typeof update !== 'object') return false;
-  if (!update.message || typeof update.message !== 'object') return false;
-  if (!update.message.from || !update.message.from.id) return false;
-  if (!update.message.chat || !update.message.chat.id) return false;
+  const u = update as Record<string, unknown>;
+  if (!u.message || typeof u.message !== 'object') return false;
+  const message = u.message as Record<string, unknown>;
+  if (!message.from || !message.chat) return false;
   return true;
 }
 
@@ -51,7 +60,7 @@ function sanitizeSearchQuery(query: string): string {
 }
 
 // Security: Rate limiting check
-async function checkRateLimit(supabase: any, telegramUserId: string, action: string): Promise<boolean> {
+async function checkRateLimit(supabase: SupabaseClient, telegramUserId: string, action: string): Promise<boolean> {
   if (!telegramUserId) return true; // Allow if no user ID
   
   try {

@@ -146,7 +146,7 @@ const TemplateMessageConfig = () => {
   };
 
   // Handle template usage
-  const useTemplate = (content: string) => {
+  const copyTemplate = (content: string) => {
     navigator.clipboard.writeText(content);
     toast.success("Template copied to clipboard!");
     
@@ -325,7 +325,7 @@ const TemplateMessageConfig = () => {
                     size="sm" 
                     onClick={(e) => {
                       e.stopPropagation();
-                      useTemplate(template.content);
+                      copyTemplate(template.content);
                     }}
                   >
                     <Copy className="h-4 w-4 mr-1" />
