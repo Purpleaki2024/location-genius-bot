@@ -523,6 +523,9 @@ serve(async (req) => {
   try {
     console.log("Function started, checking environment...");
     
+    // Debug: Check all environment variables
+    console.log("Available environment variables:", Object.keys(Deno.env.toObject()));
+    
     // Debug: Log available environment variables (without exposing sensitive data)
     const envCheck = {
       hasTelegramToken: !!Deno.env.get("TELEGRAM_BOT_TOKEN"),
@@ -745,9 +748,39 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error processing webhook:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Better error serialization
+    let errorDetails: any = {
+      message: "Unknown error",
+      type: "UnknownError"
+    };
+    
+    if (error instanceof Error) {
+      errorDetails = {
+        message: error.message,
+        name: error.name,
+        stack: error.stack?.substring(0, 500) // Limit stack trace length
+      };
+    } else if (typeof error === 'object' && error !== null) {
+      errorDetails = {
+        message: JSON.stringify(error),
+        type: "ObjectError"
+      };
+    } else {
+      errorDetails = {
+        message: String(error),
+        type: "StringError"
+      };
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage, details: "Check function logs for more information" }),
+      JSON.stringify({ 
+        error: errorDetails.message, 
+        errorType: errorDetails.type,
+        errorName: errorDetails.name,
+        details: "Check function logs for more information",
+        version: CONFIG.VERSION
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
