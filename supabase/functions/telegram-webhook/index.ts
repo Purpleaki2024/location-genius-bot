@@ -520,10 +520,11 @@ serve(async (req) => {
   }
 
   try {
-    // Get the telegram bot token from environment
-    const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    // Get the telegram bot token from environment (try multiple variable names)
+    const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || Deno.env.get("BOT_TOKEN");
     
     if (!telegramBotToken) {
+      console.error("Telegram bot token not found in environment variables");
       return new Response(
         JSON.stringify({ error: "Telegram bot token not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
