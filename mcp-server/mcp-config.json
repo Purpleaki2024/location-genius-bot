@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "location-genius": {
+      "command": "node",
+      "args": ["./mcp-server/dist/index.js"],
+      "env": {
+        "SUPABASE_URL": "${env:SUPABASE_URL}",
+        "SUPABASE_SERVICE_KEY": "${env:SUPABASE_SERVICE_KEY}",
+        "TELEGRAM_BOT_TOKEN": "${env:TELEGRAM_BOT_TOKEN}",
+        "NODE_ENV": "development"
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}
