@@ -17,7 +17,7 @@ export interface TelegramMessage {
 
 export interface TelegramResponse {
   ok: boolean;
-  result?: any;
+  result?: unknown;
   description?: string;
   error_code?: number;
 }
@@ -228,7 +228,7 @@ export class TelegramBotApi {
   }
 
   // Generic method to call any Telegram Bot API method
-  private async callMethod(method: string, params?: any): Promise<TelegramResponse> {
+  private async callMethod(method: string, params?: Record<string, unknown>): Promise<TelegramResponse> {
     const url = `${this.apiBaseUrl}${this.token}/${method}`;
     
     try {

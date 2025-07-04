@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -65,14 +65,7 @@ const TelegramBotConfig = () => {
     }
   }, []);
 
-  // Load commands from bot if token is set
-  useEffect(() => {
-    if (botToken) {
-      loadCommands();
-    }
-  }, [botToken]);
-
-  const loadCommands = async () => {
+  const loadCommands = useCallback(async () => {
     if (!botToken) return;
     
     try {
@@ -85,7 +78,14 @@ const TelegramBotConfig = () => {
     } catch (error) {
       console.error("Error loading commands:", error);
     }
-  };
+  }, [botToken]);
+
+  // Load commands from bot if token is set
+  useEffect(() => {
+    if (botToken) {
+      loadCommands();
+    }
+  }, [botToken, loadCommands]);
 
   const saveConfiguration = () => {
     if (!botToken) {

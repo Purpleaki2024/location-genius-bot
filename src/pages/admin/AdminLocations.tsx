@@ -50,7 +50,7 @@ const AdminLocations = () => {
     location.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const handleAdd = (data: any) => {
+  const handleAdd = (data: Omit<Location, 'id' | 'created_at' | 'updated_at'>) => {
     addLocation.mutate(data, {
       onSuccess: () => {
         setShowAddModal(false);
@@ -62,7 +62,7 @@ const AdminLocations = () => {
     });
   };
   
-  const handleEdit = (data: any) => {
+  const handleEdit = (data: Omit<Location, 'id' | 'created_at' | 'updated_at'>) => {
     if (editLocation) {
       updateLocation.mutate(
         { id: editLocation.id, location: data },

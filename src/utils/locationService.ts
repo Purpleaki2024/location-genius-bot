@@ -3,6 +3,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { TelegramUpdate, CommandHandler, TelegramMessage } from "./telegramBotApi";
 import { toast } from "sonner";
 
+// Location interface
+interface Location {
+  id: string;
+  name: string;
+  address: string;
+  type: string;
+  rating: number;
+  lat: number;
+  lng: number;
+  visits: number;
+  code?: string;
+  postcode?: string;
+  contact?: string;
+  info?: string;
+  password?: string;
+  country?: string;
+}
+
 // Types for location queries
 export type LocationQueryType = 'village' | 'town' | 'city' | 'postcode' | 'all';
 
@@ -41,7 +59,7 @@ export const searchLocations = async (query: string, type?: LocationQueryType) =
 };
 
 // Format a location for the telegram message
-const formatLocationForTelegram = (location: any): string => {
+const formatLocationForTelegram = (location: Location): string => {
   return `📍 *${location.name}*\n` +
     `Address: ${location.address}\n` +
     `Type: ${location.type}\n` +
