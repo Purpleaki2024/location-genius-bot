@@ -601,6 +601,7 @@ async function handleStartCommand(
 
 // Handler: Process /help command
 async function handleHelpCommand(
+  supabase: any,
   telegramBotToken: string,
   message: any
 ): Promise<void> {
@@ -612,10 +613,43 @@ async function handleHelpCommand(
   try {
     await logger.logInfo("Help command initiated", userId, chatId);
 
-    const helpMessage = `Available commands:\n/start - Welcome message\n/help - List commands\n/invite - Get invite link\n/stats - View bot stats\n/logs - View recent logs\n/promote - Promote a user\n/demote - Demote a user\n/setpassword - Set user password\n/backup - Backup database`;
+    // Check if user is admin
+    const isAdmin = await enforceAdminRBAC(supabase, userId || '');
+    
+    let helpMessage = `🤖 *Available Commands:*\n\n`;
+    
+    // Basic commands for all users
+    helpMessage += `📝 *Basic Commands:*\n`;
+    helpMessage += `/start - Welcome message\n`;
+    helpMessage += `/help - Show this help message\n`;
+    helpMessage += `/invite - Get invite link\n\n`;
+    
+    // Location commands
+    helpMessage += `📍 *Location Commands:*\n`;
+    helpMessage += `Just type any location name to search!\n`;
+    helpMessage += `Examples: "London", "New York", "Paris"\n\n`;
+    
+    // Admin commands (only show if user is admin)
+    if (isAdmin) {
+      helpMessage += `⚙️ *Admin Commands:*\n`;
+      helpMessage += `/stats - View bot statistics\n`;
+      helpMessage += `/logs - View recent bot logs\n`;
+      helpMessage += `/promote <user> - Promote a user to admin\n`;
+      helpMessage += `/demote <user> - Demote a user\n`;
+      helpMessage += `/setpassword <user> <password> - Set user password\n`;
+      helpMessage += `/backup - Create database backup\n\n`;
+      helpMessage += `🔒 *Admin Features Unlocked*`;
+    } else {
+      helpMessage += `💡 *Tips:*\n`;
+      helpMessage += `• Send me any location name to search\n`;
+      helpMessage += `• Share your location to find nearby places\n`;
+      helpMessage += `• Use /invite to share this bot with friends`;
+    }
+
     await sendTelegramMessage(telegramBotToken, "sendMessage", {
       chat_id: message.chat.id,
-      text: helpMessage
+      text: helpMessage,
+      parse_mode: "Markdown"
     });
 
     const duration = Date.now() - startTime;
@@ -626,15 +660,91 @@ async function handleHelpCommand(
   }
 }
 
+// Handler: Process /logs command
+async function handleLogsCommand(
+  supabase: any,
+  telegramBotToken: string,
+  message: any
+): Promise<void> {
+  const logger = BotLogger.getInstance();
+  const startTime = Date.now();
+  const userId = message.from?.id?.toString();
+  const chatId = message.chat.id.toString();
+
+  try {
+    await logger.logInfo("Logs command initiated", userId, chatId);
+
+    // Check if user is admin (you may want to implement this)
+    // const isAdmin = await enforceAdminRBAC(supabase, userId);
+    // if (!isAdmin) {
+    //   await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    //     chat_id: message.chat.id,
+    //     text: "❌ Access denied. Admin privileges required."
+    //   });
+    //   return;
+    // }
+
+    // Get recent log statistics
+    const { data: logStats, error: statsError } = await supabase.rpc("get_bot_log_stats", { days_back: 1 });
+    const { data: errorSummary, error: errorError } = await supabase.rpc("get_bot_error_summary", { days_back: 1 });
+    const { data: commandStats, error: commandError } = await supabase.rpc("get_command_usage_stats", { days_back: 1 });
+
+    let logMessage = "📊 *Bot Logs Summary (Last 24 Hours)*\n\n";
+
+    if (!statsError && logStats) {
+      logMessage += "*Log Levels:*\n";
+      logStats.forEach((stat: any) => {
+        const emoji = stat.level === 'ERROR' ? '🔴' : stat.level === 'WARN' ? '🟡' : '🟢';
+        logMessage += `${emoji} ${stat.level}: ${stat.count} entries\n`;
+      });
+      logMessage += "\n";
+    }
+
+    if (!commandError && commandStats && commandStats.length > 0) {
+      logMessage += "*Command Usage:*\n";
+      commandStats.slice(0, 5).forEach((cmd: any) => {
+        logMessage += `📈 ${cmd.command}: ${cmd.usage_count} uses (avg: ${cmd.avg_duration_ms}ms)\n`;
+      });
+      logMessage += "\n";
+    }
+
+    if (!errorError && errorSummary && errorSummary.length > 0) {
+      logMessage += "*Recent Errors:*\n";
+      errorSummary.slice(0, 3).forEach((error: any) => {
+        logMessage += `🚨 ${error.command || 'Unknown'}: ${error.count} errors\n`;
+        logMessage += `   Last: ${new Date(error.last_occurrence).toLocaleString()}\n`;
+      });
+    } else {
+      logMessage += "✅ No errors in the last 24 hours!\n";
+    }
+
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: logMessage,
+      parse_mode: "Markdown"
+    });
+
+    const duration = Date.now() - startTime;
+    await logger.logCommand("/logs", userId, chatId, duration);
+  } catch (error) {
+    await logger.logError("Error in logs command", error as Error, userId, chatId, "/logs");
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Failed to fetch logs. Please try again later."
+    });
+  }
+}
+
 // Handler: Process /invite command
 async function handleInviteCommand(
   telegramBotToken: string,
   message: any
 ): Promise<void> {
-  const inviteLink = `https://t.me/your_bot?start=invite`;
+  const inviteLink = `https://t.me/Moatboat_bot?start=invite`;
   await sendTelegramMessage(telegramBotToken, "sendMessage", {
     chat_id: message.chat.id,
-    text: `Here is your invite link: ${inviteLink}`
+    text: `🤖 *Share this bot with your friends!*\n\n🔗 Invite link: ${inviteLink}\n\n💡 They can use this bot to search for locations and get helpful information!`,
+    parse_mode: "Markdown"
   });
 }
 
@@ -925,22 +1035,60 @@ async function handleRequest(req: Request): Promise<Response> {
       if (text === "/start") {
         await handleStartCommand(supabase, telegramBotToken, message);
       } else if (text === "/help") {
-        await handleHelpCommand(telegramBotToken, message);
+        await handleHelpCommand(supabase, telegramBotToken, message);
       } else if (text === "/invite") {
         await handleInviteCommand(telegramBotToken, message);
       } else if (text === "/stats") {
         await handleStatsCommand(supabase, telegramBotToken, message);
+      } else if (text === "/logs") {
+        await handleLogsCommand(supabase, telegramBotToken, message);
       } else if (text.startsWith("/promote ")) {
-        const argsText = text.substring(9).trim();
-        await handlePromoteCommand(supabase, telegramBotToken, message, argsText);
+        const userId = message.from?.id?.toString();
+        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
+        if (!isAdmin) {
+          await sendTelegramMessage(telegramBotToken, "sendMessage", {
+            chat_id: message.chat.id,
+            text: "❌ Access denied. Admin privileges required."
+          });
+        } else {
+          const argsText = text.substring(9).trim();
+          await handlePromoteCommand(supabase, telegramBotToken, message, argsText);
+        }
       } else if (text.startsWith("/demote ")) {
-        const argsText = text.substring(8).trim();
-        await handleDemoteCommand(supabase, telegramBotToken, message, argsText);
+        const userId = message.from?.id?.toString();
+        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
+        if (!isAdmin) {
+          await sendTelegramMessage(telegramBotToken, "sendMessage", {
+            chat_id: message.chat.id,
+            text: "❌ Access denied. Admin privileges required."
+          });
+        } else {
+          const argsText = text.substring(8).trim();
+          await handleDemoteCommand(supabase, telegramBotToken, message, argsText);
+        }
       } else if (text.startsWith("/setpassword ")) {
-        const argsText = text.substring(13).trim();
-        await handleSetPasswordCommand(supabase, telegramBotToken, message, argsText);
+        const userId = message.from?.id?.toString();
+        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
+        if (!isAdmin) {
+          await sendTelegramMessage(telegramBotToken, "sendMessage", {
+            chat_id: message.chat.id,
+            text: "❌ Access denied. Admin privileges required."
+          });
+        } else {
+          const argsText = text.substring(13).trim();
+          await handleSetPasswordCommand(supabase, telegramBotToken, message, argsText);
+        }
       } else if (text === "/backup") {
-        await handleBackupCommand(supabase, telegramBotToken, message);
+        const userId = message.from?.id?.toString();
+        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
+        if (!isAdmin) {
+          await sendTelegramMessage(telegramBotToken, "sendMessage", {
+            chat_id: message.chat.id,
+            text: "❌ Access denied. Admin privileges required."
+          });
+        } else {
+          await handleBackupCommand(supabase, telegramBotToken, message);
+        }
       } else {
         // Handle location search
         const searchStartTime = Date.now();
