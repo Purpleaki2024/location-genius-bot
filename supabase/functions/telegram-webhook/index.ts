@@ -741,6 +741,43 @@ async function handleRequest(req: Request): Promise<Response> {
     // Use the Supabase client for database operations
     console.log("Using Supabase client for database operations...");
 
+    // Process the message
+    const message = update.message;
+    if (message && message.text) {
+      const text = message.text.trim();
+      console.log("Processing message:", text);
+
+      // Handle commands
+      if (text === "/start") {
+        await handleStartCommand(supabase, telegramBotToken, message);
+      } else if (text === "/help") {
+        await handleHelpCommand(telegramBotToken, message);
+      } else if (text === "/invite") {
+        await handleInviteCommand(telegramBotToken, message);
+      } else if (text === "/stats") {
+        await handleStatsCommand(supabase, telegramBotToken, message);
+      } else if (text.startsWith("/promote ")) {
+        const argsText = text.substring(9).trim();
+        await handlePromoteCommand(supabase, telegramBotToken, message, argsText);
+      } else if (text.startsWith("/demote ")) {
+        const argsText = text.substring(8).trim();
+        await handleDemoteCommand(supabase, telegramBotToken, message, argsText);
+      } else if (text.startsWith("/setpassword ")) {
+        const argsText = text.substring(13).trim();
+        await handleSetPasswordCommand(supabase, telegramBotToken, message, argsText);
+      } else if (text === "/backup") {
+        await handleBackupCommand(supabase, telegramBotToken, message);
+      } else {
+        // Handle location search
+        const response = await handleLocationSearch(supabase, "search", text, message.from?.id?.toString(), message.chat.id);
+        await sendTelegramMessage(telegramBotToken, "sendMessage", response as unknown as Record<string, unknown>);
+      }
+    } else if (message && message.location) {
+      // Handle location messages
+      const response = await handleLocationSharing(supabase, message.location, message.from?.id?.toString(), message.chat.id);
+      await sendTelegramMessage(telegramBotToken, "sendMessage", response as unknown as Record<string, unknown>);
+    }
+
     return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
   } catch (error) {
     console.error("Error handling request:", error);
