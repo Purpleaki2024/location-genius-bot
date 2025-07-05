@@ -35,8 +35,143 @@ const CONFIG = {
   },
   MAX_QUERY_LENGTH: 100,
   ALLOWED_SEARCH_CHARS: /^[a-zA-Z0-9\s\-.,#&'()]+$/,
-  VERSION: "1.0.1", // Added version for debugging
+  VERSION: "1.0.2", // Added version for debugging
+  LOGGING: {
+    ENABLED: true,
+    LEVEL: "INFO", // DEBUG, INFO, WARN, ERROR
+    MAX_MESSAGE_LENGTH: 1000,
+    INCLUDE_USER_DATA: false, // For privacy
+  }
 };
+
+// Logging utility
+interface LogEntry {
+  timestamp: string;
+  level: string;
+  message: string;
+  userId?: string;
+  chatId?: string;
+  command?: string;
+  error?: string;
+  duration?: number;
+  metadata?: Record<string, unknown>;
+}
+
+class BotLogger {
+  private static instance: BotLogger;
+  private supabase: any;
+
+  private constructor() {}
+
+  static getInstance(): BotLogger {
+    if (!BotLogger.instance) {
+      BotLogger.instance = new BotLogger();
+    }
+    return BotLogger.instance;
+  }
+
+  setSupabase(supabase: any) {
+    this.supabase = supabase;
+  }
+
+  private async logToDatabase(entry: LogEntry): Promise<void> {
+    if (!this.supabase || !CONFIG.LOGGING.ENABLED) return;
+
+    try {
+      const { error } = await this.supabase
+        .from('bot_logs')
+        .insert({
+          timestamp: entry.timestamp,
+          level: entry.level,
+          message: entry.message.substring(0, CONFIG.LOGGING.MAX_MESSAGE_LENGTH),
+          user_id: entry.userId,
+          chat_id: entry.chatId,
+          command: entry.command,
+          error_message: entry.error,
+          duration_ms: entry.duration,
+          metadata: entry.metadata
+        });
+
+      if (error) {
+        console.error('Failed to log to database:', error);
+      }
+    } catch (error) {
+      console.error('Error in database logging:', error);
+    }
+  }
+
+  async logInfo(message: string, userId?: string, chatId?: string, metadata?: Record<string, unknown>): Promise<void> {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level: 'INFO',
+      message,
+      userId,
+      chatId,
+      metadata
+    };
+
+    console.log(`[INFO] ${message}`, metadata ? { metadata } : '');
+    await this.logToDatabase(entry);
+  }
+
+  async logCommand(command: string, userId?: string, chatId?: string, duration?: number): Promise<void> {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level: 'INFO',
+      message: `Command executed: ${command}`,
+      userId,
+      chatId,
+      command,
+      duration
+    };
+
+    console.log(`[COMMAND] ${command} executed in ${duration}ms`);
+    await this.logToDatabase(entry);
+  }
+
+  async logError(message: string, error: Error, userId?: string, chatId?: string, command?: string): Promise<void> {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level: 'ERROR',
+      message,
+      userId,
+      chatId,
+      command,
+      error: error.message
+    };
+
+    console.error(`[ERROR] ${message}:`, error);
+    await this.logToDatabase(entry);
+  }
+
+  async logWarning(message: string, userId?: string, chatId?: string, metadata?: Record<string, unknown>): Promise<void> {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level: 'WARN',
+      message,
+      userId,
+      chatId,
+      metadata
+    };
+
+    console.warn(`[WARN] ${message}`, metadata ? { metadata } : '');
+    await this.logToDatabase(entry);
+  }
+
+  async logDebug(message: string, metadata?: Record<string, unknown>): Promise<void> {
+    if (CONFIG.LOGGING.LEVEL !== 'DEBUG') return;
+
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level: 'DEBUG',
+      message,
+      metadata
+    };
+
+    console.debug(`[DEBUG] ${message}`, metadata ? { metadata } : '');
+    await this.logToDatabase(entry);
+  }
+}
 
 // Helper function to validate Telegram update structure
 function validateTelegramUpdate(update: unknown): update is TelegramUpdate {
@@ -442,11 +577,26 @@ async function handleStartCommand(
   telegramBotToken: string,
   message: any
 ): Promise<void> {
-  const welcomeMessage = `Welcome to the bot! Use /help to see available commands.`;
-  await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    chat_id: message.chat.id,
-    text: welcomeMessage
-  });
+  const logger = BotLogger.getInstance();
+  const startTime = Date.now();
+  const userId = message.from?.id?.toString();
+  const chatId = message.chat.id.toString();
+
+  try {
+    await logger.logInfo("Start command initiated", userId, chatId);
+
+    const welcomeMessage = `Welcome to the bot! Use /help to see available commands.`;
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: welcomeMessage
+    });
+
+    const duration = Date.now() - startTime;
+    await logger.logCommand("/start", userId, chatId, duration);
+  } catch (error) {
+    await logger.logError("Error in start command", error as Error, userId, chatId, "/start");
+    throw error;
+  }
 }
 
 // Handler: Process /help command
@@ -454,11 +604,26 @@ async function handleHelpCommand(
   telegramBotToken: string,
   message: any
 ): Promise<void> {
-  const helpMessage = `Available commands:\n/start - Welcome message\n/help - List commands\n/invite - Get invite link\n/stats - View bot stats\n/promote - Promote a user\n/demote - Demote a user\n/setpassword - Set user password\n/backup - Backup database`;
-  await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    chat_id: message.chat.id,
-    text: helpMessage
-  });
+  const logger = BotLogger.getInstance();
+  const startTime = Date.now();
+  const userId = message.from?.id?.toString();
+  const chatId = message.chat.id.toString();
+
+  try {
+    await logger.logInfo("Help command initiated", userId, chatId);
+
+    const helpMessage = `Available commands:\n/start - Welcome message\n/help - List commands\n/invite - Get invite link\n/stats - View bot stats\n/logs - View recent logs\n/promote - Promote a user\n/demote - Demote a user\n/setpassword - Set user password\n/backup - Backup database`;
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: helpMessage
+    });
+
+    const duration = Date.now() - startTime;
+    await logger.logCommand("/help", userId, chatId, duration);
+  } catch (error) {
+    await logger.logError("Error in help command", error as Error, userId, chatId, "/help");
+    throw error;
+  }
 }
 
 // Handler: Process /invite command
@@ -702,8 +867,14 @@ async function sendTelegramMessage(
 
 // Simplify the serve function
 async function handleRequest(req: Request): Promise<Response> {
+  const logger = BotLogger.getInstance();
+  const requestStartTime = Date.now();
+
   try {
-    console.log("Function started, checking environment...");
+    await logger.logInfo("Webhook request received", undefined, undefined, {
+      method: req.method,
+      url: req.url
+    });
 
     // Debug: Check all environment variables
     console.log("Available environment variables:", Object.keys(Deno.env.toObject()));
@@ -711,43 +882,46 @@ async function handleRequest(req: Request): Promise<Response> {
     // Get the telegram bot token from environment
     const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || Deno.env.get("BOT_TOKEN");
     if (!telegramBotToken) {
-      console.error("Telegram bot token not found in environment variables");
+      await logger.logError("Telegram bot token not found in environment variables", new Error("Missing bot token"));
       return new Response(
         JSON.stringify({ error: "Telegram bot token not configured" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Bot token found, creating Supabase client...");
+    await logger.logInfo("Bot token found, creating Supabase client");
 
     // Create the Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+    // Initialize logger with supabase client
+    logger.setSupabase(supabase);
+
     // Get and validate update from Telegram
     const update = await req.json();
-    console.log("Received update:", JSON.stringify(update));
+    await logger.logDebug("Received Telegram update", { updateId: update.update_id });
 
     // Validate the Telegram update structure
     if (!validateTelegramUpdate(update)) {
-      console.warn("Invalid Telegram update structure:", update);
+      await logger.logWarning("Invalid Telegram update structure received", undefined, undefined, { update });
       return new Response(
         JSON.stringify({ ok: true, message: "Invalid update structure" }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Use the Supabase client for database operations
-    console.log("Using Supabase client for database operations...");
-
     // Process the message
     const message = update.message;
+    const userId = message.from?.id?.toString();
+    const chatId = message.chat.id.toString();
+
     if (message && message.text) {
       const text = message.text.trim();
-      console.log("Processing message:", text);
+      await logger.logInfo("Processing text message", userId, chatId, { text });
 
-      // Handle commands
+      // Handle commands with individual logging
       if (text === "/start") {
         await handleStartCommand(supabase, telegramBotToken, message);
       } else if (text === "/help") {
@@ -769,20 +943,39 @@ async function handleRequest(req: Request): Promise<Response> {
         await handleBackupCommand(supabase, telegramBotToken, message);
       } else {
         // Handle location search
-        const response = await handleLocationSearch(supabase, "search", text, message.from?.id?.toString(), message.chat.id);
+        const searchStartTime = Date.now();
+        const response = await handleLocationSearch(supabase, "search", text, userId, message.chat.id);
         await sendTelegramMessage(telegramBotToken, "sendMessage", response as unknown as Record<string, unknown>);
+        
+        const searchDuration = Date.now() - searchStartTime;
+        await logger.logInfo("Location search completed", userId, chatId, { 
+          query: text, 
+          duration: searchDuration 
+        });
       }
     } else if (message && message.location) {
       // Handle location messages
-      const response = await handleLocationSharing(supabase, message.location, message.from?.id?.toString(), message.chat.id);
+      await logger.logInfo("Processing location message", userId, chatId, { 
+        lat: message.location.latitude, 
+        lng: message.location.longitude 
+      });
+      
+      const response = await handleLocationSharing(supabase, message.location, userId, message.chat.id);
       await sendTelegramMessage(telegramBotToken, "sendMessage", response as unknown as Record<string, unknown>);
     }
 
+    const totalDuration = Date.now() - requestStartTime;
+    await logger.logInfo("Request completed successfully", userId, chatId, { 
+      totalDuration 
+    });
+
     return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
   } catch (error) {
-    console.error("Error handling request:", error);
+    const totalDuration = Date.now() - requestStartTime;
+    await logger.logError("Critical error in request handler", error as Error, undefined, undefined, undefined);
+    
     return new Response(
-      JSON.stringify({ error: error.message || "Unknown error" }),
+      JSON.stringify({ error: (error as Error).message || "Unknown error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
