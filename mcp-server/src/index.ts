@@ -45,6 +45,75 @@ const TelegramMessageSchema = z.object({
   parse_mode: z.enum(['HTML', 'Markdown', 'MarkdownV2']).optional(),
 });
 
+// TypeScript interfaces for type safety
+interface GetLocationsArgs {
+  category?: string;
+  tags?: string[];
+  limit?: number;
+}
+
+interface AddLocationArgs {
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  address?: string;
+  category?: string;
+  tags?: string[];
+}
+
+interface UpdateLocationArgs {
+  id: string;
+  name?: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+  category?: string;
+  tags?: string[];
+}
+
+interface DeleteLocationArgs {
+  id: string;
+}
+
+interface GetUsersArgs {
+  role?: 'user' | 'admin';
+}
+
+interface AddUserArgs {
+  telegram_id: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: 'user' | 'admin';
+}
+
+interface UpdateUserRoleArgs {
+  telegram_id: string;
+  role: 'user' | 'admin';
+}
+
+interface GetLocationStatsArgs {
+  timeframe?: 'day' | 'week' | 'month' | 'year';
+}
+
+interface SearchLocationsArgs {
+  query: string;
+  limit?: number;
+}
+
+interface SendTelegramMessageArgs {
+  chat_id: string;
+  text: string;
+  parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
+}
+
+interface GetTelegramBotInfoArgs {
+  // No specific args needed for bot info
+  [key: string]: unknown;
+}
+
 class LocationGeniusMCPServer {
   private server: Server;
 
@@ -265,7 +334,7 @@ class LocationGeniusMCPServer {
     });
   }
 
-  private async getLocations(args: any) {
+  private async getLocations(args: GetLocationsArgs) {
     const { category, tags, limit = 100 } = args;
     let query = supabase.from('locations').select('*');
 
@@ -295,7 +364,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async addLocation(args: any) {
+  private async addLocation(args: AddLocationArgs) {
     const validatedData = LocationSchema.parse(args);
     
     const { data, error } = await supabase
@@ -317,7 +386,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async updateLocation(args: any) {
+  private async updateLocation(args: UpdateLocationArgs) {
     const { id, ...updates } = args;
     
     const { data, error } = await supabase
@@ -340,7 +409,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async deleteLocation(args: any) {
+  private async deleteLocation(args: DeleteLocationArgs) {
     const { id } = args;
     
     const { error } = await supabase
@@ -362,7 +431,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async getUsers(args: any) {
+  private async getUsers(args: GetUsersArgs) {
     const { role, limit = 100 } = args;
     let query = supabase.from('users').select('*');
 
@@ -388,7 +457,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async addUser(args: any) {
+  private async addUser(args: AddUserArgs) {
     const validatedData = UserSchema.parse(args);
     
     const { data, error } = await supabase
@@ -410,7 +479,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async updateUserRole(args: any) {
+  private async updateUserRole(args: UpdateUserRoleArgs) {
     const { telegram_id, role } = args;
     
     const { data, error } = await supabase
@@ -433,7 +502,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async getLocationStats(args: any) {
+  private async getLocationStats(args: GetLocationStatsArgs) {
     const { timeframe = 'month' } = args;
     
     // Call the get_stats function from Supabase
@@ -453,7 +522,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async searchLocations(args: any) {
+  private async searchLocations(args: SearchLocationsArgs) {
     const { query, radius, center_lat, center_lng, limit = 50 } = args;
     
     let supabaseQuery = supabase.from('locations').select('*');
@@ -495,7 +564,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async sendTelegramMessage(args: any) {
+  private async sendTelegramMessage(args: SendTelegramMessageArgs) {
     const { chat_id, text, parse_mode } = TelegramMessageSchema.parse(args);
     
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -532,7 +601,7 @@ class LocationGeniusMCPServer {
     };
   }
 
-  private async getTelegramBotInfo(args: any) {
+  private async getTelegramBotInfo(args: GetTelegramBotInfoArgs) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
       throw new Error('Telegram bot token not configured');

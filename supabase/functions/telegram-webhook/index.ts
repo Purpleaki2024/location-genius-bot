@@ -13,7 +13,10 @@ import type {
   LogSearchParams,
   SearchResult,
   LogActivityData,
-  TelegramResponse
+  TelegramResponse,
+  LogStat,
+  CommandStat,
+  ErrorSummary
 } from "./types.ts";
 
 // Define CORS headers
@@ -59,7 +62,7 @@ interface LogEntry {
 
 class BotLogger {
   private static instance: BotLogger;
-  private supabase: any;
+  private supabase: SupabaseClient | null = null;
 
   private constructor() {}
 
@@ -70,7 +73,7 @@ class BotLogger {
     return BotLogger.instance;
   }
 
-  setSupabase(supabase: any) {
+  setSupabase(supabase: SupabaseClient) {
     this.supabase = supabase;
   }
 
@@ -573,9 +576,9 @@ async function handleTextSearch(
 
 // Handler: Process /start command
 async function handleStartCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any
+  message: TelegramMessage
 ): Promise<void> {
   const logger = BotLogger.getInstance();
   const startTime = Date.now();
@@ -601,9 +604,9 @@ async function handleStartCommand(
 
 // Handler: Process /help command
 async function handleHelpCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any
+  message: TelegramMessage
 ): Promise<void> {
   const logger = BotLogger.getInstance();
   const startTime = Date.now();
@@ -662,9 +665,9 @@ async function handleHelpCommand(
 
 // Handler: Process /logs command
 async function handleLogsCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any
+  message: TelegramMessage
 ): Promise<void> {
   const logger = BotLogger.getInstance();
   const startTime = Date.now();
@@ -693,7 +696,7 @@ async function handleLogsCommand(
 
     if (!statsError && logStats) {
       logMessage += "*Log Levels:*\n";
-      logStats.forEach((stat: any) => {
+      logStats.forEach((stat: LogStat) => {
         const emoji = stat.level === 'ERROR' ? '🔴' : stat.level === 'WARN' ? '🟡' : '🟢';
         logMessage += `${emoji} ${stat.level}: ${stat.count} entries\n`;
       });
@@ -702,7 +705,7 @@ async function handleLogsCommand(
 
     if (!commandError && commandStats && commandStats.length > 0) {
       logMessage += "*Command Usage:*\n";
-      commandStats.slice(0, 5).forEach((cmd: any) => {
+      commandStats.slice(0, 5).forEach((cmd: CommandStat) => {
         logMessage += `📈 ${cmd.command}: ${cmd.usage_count} uses (avg: ${cmd.avg_duration_ms}ms)\n`;
       });
       logMessage += "\n";
@@ -710,7 +713,7 @@ async function handleLogsCommand(
 
     if (!errorError && errorSummary && errorSummary.length > 0) {
       logMessage += "*Recent Errors:*\n";
-      errorSummary.slice(0, 3).forEach((error: any) => {
+      errorSummary.slice(0, 3).forEach((error: ErrorSummary) => {
         logMessage += `🚨 ${error.command || 'Unknown'}: ${error.count} errors\n`;
         logMessage += `   Last: ${new Date(error.last_occurrence).toLocaleString()}\n`;
       });
@@ -738,7 +741,7 @@ async function handleLogsCommand(
 // Handler: Process /invite command
 async function handleInviteCommand(
   telegramBotToken: string,
-  message: any
+  message: TelegramMessage
 ): Promise<void> {
   const inviteLink = `https://t.me/Moatboat_bot?start=invite`;
   await sendTelegramMessage(telegramBotToken, "sendMessage", {
@@ -750,9 +753,9 @@ async function handleInviteCommand(
 
 // Handler: Process /stats command
 async function handleStatsCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any
+  message: TelegramMessage
 ): Promise<void> {
   const { data, error } = await supabase.rpc("get_stats");
   if (error) {
@@ -773,9 +776,9 @@ async function handleStatsCommand(
 
 // Handler: Process /promote command
 async function handlePromoteCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any,
+  message: TelegramMessage,
   argsText: string
 ): Promise<void> {
   const { error } = await supabase.rpc("promote_user", { user_identifier: argsText });
@@ -796,9 +799,9 @@ async function handlePromoteCommand(
 
 // Handler: Process /demote command
 async function handleDemoteCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any,
+  message: TelegramMessage,
   argsText: string
 ): Promise<void> {
   const { error } = await supabase.rpc("demote_user", { user_identifier: argsText });
@@ -819,9 +822,9 @@ async function handleDemoteCommand(
 
 // Handler: Process /setpassword command
 async function handleSetPasswordCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any,
+  message: TelegramMessage,
   argsText: string
 ): Promise<void> {
   const [identifier, newPassword] = argsText.split(" ", 2);
@@ -851,9 +854,9 @@ async function handleSetPasswordCommand(
 
 // Handler: Process /backup command
 async function handleBackupCommand(
-  supabase: any,
+  supabase: SupabaseClient,
   telegramBotToken: string,
-  message: any
+  message: TelegramMessage
 ): Promise<void> {
   const backupPath = `/backups/backup_${Date.now()}.sql`;
   const { error } = await supabase.rpc("create_backup", { path: backupPath });
@@ -873,7 +876,7 @@ async function handleBackupCommand(
 }
 
 // Add RBAC enforcement
-async function enforceAdminRBAC(supabase: any, telegramUserId: string): Promise<boolean> {
+async function enforceAdminRBAC(supabase: SupabaseClient, telegramUserId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from("telegram_users")
     .select("is_admin")
