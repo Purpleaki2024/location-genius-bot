@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      bot_logs: {
+        Row: {
+          chat_id: string | null
+          command: string | null
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: number
+          level: string
+          message: string
+          metadata: Json | null
+          timestamp: string
+          user_id: string | null
+        }
+        Insert: {
+          chat_id?: string | null
+          command?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: number
+          level: string
+          message: string
+          metadata?: Json | null
+          timestamp?: string
+          user_id?: string | null
+        }
+        Update: {
+          chat_id?: string | null
+          command?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: number
+          level?: string
+          message?: string
+          metadata?: Json | null
+          timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       bot_stats: {
         Row: {
           created_at: string | null
@@ -187,6 +229,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      batch_increment_visits: {
+        Args: { location_ids: number[] }
+        Returns: undefined
+      }
+      cleanup_old_activities: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_old_bot_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      get_bot_error_summary: {
+        Args: { days_back?: number }
+        Returns: {
+          error_message: string
+          command: string
+          count: number
+          last_occurrence: string
+        }[]
+      }
+      get_bot_log_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          level: string
+          count: number
+          avg_duration_ms: number
+        }[]
+      }
       get_bot_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -195,6 +266,15 @@ export type Database = {
           name: string
           updated_at: string | null
           value: number
+        }[]
+      }
+      get_command_usage_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          command: string
+          usage_count: number
+          avg_duration_ms: number
+          error_count: number
         }[]
       }
       get_telegram_user_count: {
