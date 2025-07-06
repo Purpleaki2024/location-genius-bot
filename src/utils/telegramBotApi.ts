@@ -1,4 +1,3 @@
-
 /**
  * Telegram Bot API Utilities
  */
@@ -13,6 +12,7 @@ export interface TelegramMessage {
   chat_id: string | number;
   text: string;
   parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
+  [key: string]: unknown; // Add index signature for compatibility
 }
 
 export interface TelegramResponse {

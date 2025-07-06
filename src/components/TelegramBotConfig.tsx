@@ -27,6 +27,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 const RESERVED_COMMANDS = ['start', 'help', 'city', 'town', 'village', 'postcode'];
 
+interface BotInfo {
+  id: number;
+  is_bot: boolean;
+  first_name: string;
+  username: string;
+  can_join_groups: boolean;
+  can_read_all_group_messages: boolean;
+  supports_inline_queries: boolean;
+}
+
 const TelegramBotConfig = () => {
   const [botToken, setBotToken] = useState<string>("");
   const [chatId, setChatId] = useState<string>("");
@@ -119,8 +129,9 @@ const TelegramBotConfig = () => {
       const telegramBot = new TelegramBotApi({ token: botToken });
       const response = await telegramBot.testConnection();
       
-      if (response.ok) {
-        toast.success(`Connection successful! Bot "${response.result.username}" is working properly.`);
+      if (response.ok && response.result) {
+        const botInfo = response.result as BotInfo;
+        toast.success(`Connection successful! Bot "${botInfo.username}" is working properly.`);
       } else {
         toast.error("Connection failed. Please check your Bot Token.");
       }
