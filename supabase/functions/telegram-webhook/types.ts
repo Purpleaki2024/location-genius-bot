@@ -105,3 +105,20 @@ export interface LogSearchParams {
   longitude?: string;
   queryType: string;
 }
+
+export interface LogStat {
+  level: 'ERROR' | 'WARN' | 'INFO' | 'DEBUG';
+  count: number;
+}
+
+export interface CommandStat {
+  command: string;
+  usage_count: number;
+  avg_duration_ms: number;
+}
+
+export interface ErrorSummary {
+  command?: string;
+  count: number;
+  last_occurrence: string;
+}
