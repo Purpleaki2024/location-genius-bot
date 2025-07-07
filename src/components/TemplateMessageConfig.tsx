@@ -46,27 +46,41 @@ interface Template {
   name: string;
   content: string;
   lastUsed: string;
+  variables: string[];
 }
 
-// Sample templates
+// Sample templates that match the UI in the image
 const defaultTemplates = [
   {
     id: "1",
     name: "Welcome Message",
-    content: "Welcome to our service! We're glad to have you here. How can we assist you today?",
-    lastUsed: "2023-12-10",
+    content: `Hello Gorgeous,
+
+As an esteemed member of The Location Finder Chat 💎, you are bestowed with the following limits:
+
+🎯 {daily_limit} requests per 24hrs
+⚡ {remaining_requests} requests left for today
+
+For immediate results, simply send a location code.
+
+Click /help for an array of other, tempting commands.`,
+    lastUsed: "2023-10-15",
+    variables: ["daily_limit", "remaining_requests"]
   },
   {
     id: "2",
-    name: "Location Request",
-    content: "To provide you with the best service, could you please share your current location?",
-    lastUsed: "2023-12-15",
-  },
-  {
-    id: "3",
-    name: "Thank You",
-    content: "Thank you for using our service. We appreciate your trust and look forward to serving you again!",
-    lastUsed: "2023-12-18",
+    name: "Location Result",
+    content: `Here are {count} numbers near: {location_name}, {country}
+
+🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟
+🥇 *{nearby_location_1}*
+
++{country_code} {phone_number_1}
+🔒 *Use password {location_name} - WhatsApp only* 🌟
+
+🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟`,
+    lastUsed: "2023-10-15",
+    variables: ["count", "location_name", "country", "nearby_location_1", "country_code", "phone_number_1"]
   },
 ];
 
@@ -97,12 +111,16 @@ const TemplateMessageConfig = () => {
 
   // Handle create form submission
   const onCreateSubmit = (values: TemplateFormValues) => {
+    // Extract variables from template content
+    const variables = extractVariables(values.content);
+    
     // Add new template
     const newTemplate = {
       id: (templates.length + 1).toString(),
       name: values.name,
       content: values.content,
       lastUsed: "Never",
+      variables: variables,
     };
     
     setTemplates([...templates, newTemplate]);
@@ -115,10 +133,13 @@ const TemplateMessageConfig = () => {
   const onEditSubmit = (values: TemplateFormValues) => {
     if (!selectedTemplate) return;
 
+    // Extract variables from template content
+    const variables = extractVariables(values.content);
+
     // Update template
     const updatedTemplates = templates.map(template => 
       template.id === selectedTemplate.id 
-        ? { ...template, name: values.name, content: values.content }
+        ? { ...template, name: values.name, content: values.content, variables: variables }
         : template
     );
     
@@ -126,6 +147,21 @@ const TemplateMessageConfig = () => {
     setIsEditDialogOpen(false);
     setSelectedTemplate(null);
     toast.success("Template updated successfully!");
+  };
+
+  // Extract variables from template content
+  const extractVariables = (content: string): string[] => {
+    const variableRegex = /\{([^}]+)\}/g;
+    const variables: string[] = [];
+    let match;
+    
+    while ((match = variableRegex.exec(content)) !== null) {
+      if (!variables.includes(match[1])) {
+        variables.push(match[1]);
+      }
+    }
+    
+    return variables;
   };
 
   // Open edit dialog and set form values
@@ -312,10 +348,11 @@ const TemplateMessageConfig = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {templates.map((template) => (
-            <div 
+            <button
               key={template.id} 
-              className="border rounded-lg p-4 hover:border-primary/50 transition-colors"
+              className="border rounded-lg p-4 hover:border-primary/50 transition-colors cursor-pointer text-left"
               onClick={() => previewTemplate(template.content)}
+              type="button"
             >
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-medium">{template.name}</h3>
@@ -355,13 +392,28 @@ const TemplateMessageConfig = () => {
                   </Button>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                {template.content}
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
+                {template.content.substring(0, 150)}...
               </p>
+              {template.variables && template.variables.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-sm font-medium mb-2">Variables:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {template.variables.map((variable) => (
+                      <span 
+                        key={variable}
+                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                      >
+                        {variable}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
-                Last used: {template.lastUsed}
+                Created: {template.lastUsed}
               </p>
-            </div>
+            </button>
           ))}
         </div>
       )}

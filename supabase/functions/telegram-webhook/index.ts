@@ -588,17 +588,23 @@ async function handleStartCommand(
   try {
     await logger.logInfo("Start command initiated", userId, chatId);
 
-    const welcomeMessage = `Welcome to the bot! Use /help to see available commands.`;
+    // Get customizable welcome message with default values
+    const welcomeMessage = await getWelcomeMessage(supabase, 3, 3); // 3 daily limit, 3 remaining
     await sendTelegramMessage(telegramBotToken, "sendMessage", {
       chat_id: message.chat.id,
-      text: welcomeMessage
+      text: welcomeMessage,
+      parse_mode: "HTML"
     });
 
     const duration = Date.now() - startTime;
     await logger.logCommand("/start", userId, chatId, duration);
   } catch (error) {
     await logger.logError("Error in start command", error as Error, userId, chatId, "/start");
-    throw error;
+    // Fallback message
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "Welcome to the Location Finder Bot! Use /help to see available commands."
+    });
   }
 }
 
@@ -976,6 +982,110 @@ async function sendTelegramMessage(
     
     return await response.json();
   });
+}
+
+// Message template types
+interface MessageTemplate {
+  id: string;
+  name: string;
+  content: string;
+  variables: string[];
+}
+
+interface TemplateVariables {
+  [key: string]: string | number;
+}
+
+// Template utility functions
+async function getMessageTemplate(supabase: SupabaseClient, templateType: string): Promise<MessageTemplate | null> {
+  try {
+    // For now, return hardcoded templates until we can properly query the database
+    const templates: { [key: string]: MessageTemplate } = {
+      'welcome': {
+        id: '1',
+        name: 'Welcome Message',
+        content: `Hello Gorgeous,
+
+As an esteemed member of The Location Finder Chat 💎, you are bestowed with the following limits:
+
+🎯 {daily_limit} requests per 24hrs
+⚡ {remaining_requests} requests left for today
+
+For immediate results, simply send a location code.
+
+Click /help for an array of other, tempting commands.`,
+        variables: ['daily_limit', 'remaining_requests']
+      },
+      'location_result': {
+        id: '2',
+        name: 'Location Result',
+        content: `Here are {count} numbers near: {location_name}, {country}
+
+🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟
+🥇 *{nearby_location_1}*
+
++{country_code} {phone_number_1}
+🔒 *Use password {location_name} - WhatsApp only* 🌟
+
+🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟`,
+        variables: ['count', 'location_name', 'country', 'nearby_location_1', 'country_code', 'phone_number_1']
+      }
+    };
+    
+    return templates[templateType] || null;
+  } catch (error) {
+    console.error(`Error in getMessageTemplate:`, error);
+    return null;
+  }
+}
+
+function renderTemplate(template: MessageTemplate, variables: TemplateVariables): string {
+  let renderedContent = template.content;
+  
+  // Replace all template variables with actual values
+  for (const [key, value] of Object.entries(variables)) {
+    const placeholder = `{${key}}`;
+    renderedContent = renderedContent.replace(new RegExp(placeholder, 'g'), String(value));
+  }
+  
+  return renderedContent;
+}
+
+async function getWelcomeMessage(supabase: SupabaseClient, dailyLimit: number, remainingRequests: number): Promise<string> {
+  const template = await getMessageTemplate(supabase, 'welcome');
+  
+  if (!template) {
+    // Fallback message if template not found
+    return `Welcome to the Location Finder Bot! 🤖\n\nYou have ${remainingRequests} out of ${dailyLimit} requests remaining today.\n\nUse /help to see available commands.`;
+  }
+  
+  const variables: TemplateVariables = {
+    daily_limit: dailyLimit,
+    remaining_requests: remainingRequests
+  };
+  
+  return renderTemplate(template, variables);
+}
+
+async function getLocationResultMessage(
+  supabase: SupabaseClient, 
+  locationData: {
+    count: number;
+    location_name: string;
+    country: string;
+    nearby_location_1: string;
+    country_code: string;
+    phone_number_1: string;
+  }
+): Promise<string> {
+  const template = await getMessageTemplate(supabase, 'location_result');
+  
+  if (!template) {
+    // Fallback message if template not found
+    return `Found ${locationData.count} location(s) near ${locationData.location_name}, ${locationData.country}\n\n📍 ${locationData.nearby_location_1}\n+${locationData.country_code} ${locationData.phone_number_1}`;
+  }
+  
+  return renderTemplate(template, locationData);
 }
 
 // Simplify the serve function
