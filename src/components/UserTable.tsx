@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, UserCheck, UserX, Eye } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -88,9 +89,9 @@ const UserTable = ({ readOnly = false }: UserTableProps) => {
   const getRoleBadge = (role: User['role']) => {
     switch (role) {
       case 'admin':
-        return <Badge className="bg-blue-500">Admin</Badge>;
+        return <Badge className="bg-blue-500 hover:bg-blue-600">Admin</Badge>;
       case 'user':
-        return <Badge className="bg-green-500">User</Badge>;
+        return <Badge className="bg-green-500 hover:bg-green-600">User</Badge>;
       case 'blocked':
         return <Badge variant="destructive">Blocked</Badge>;
       default:
@@ -99,25 +100,33 @@ const UserTable = ({ readOnly = false }: UserTableProps) => {
   };
 
   const toggleUserBlock = (userId: string) => {
-    if (readOnly) return;
+    if (readOnly) {
+      toast.error("Read-only mode: Cannot modify users");
+      return;
+    }
     
-    setUsers(users.map(user => {
-      if (user.id === userId) {
-        return {
-          ...user,
-          role: user.role === 'blocked' ? 'user' : 'blocked'
-        };
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    setUsers(users.map(u => {
+      if (u.id === userId) {
+        const newRole = u.role === 'blocked' ? 'user' : 'blocked';
+        toast.success(`User ${u.username} has been ${newRole === 'blocked' ? 'blocked' : 'unblocked'}`);
+        return { ...u, role: newRole };
       }
-      return user;
+      return u;
     }));
   };
 
-  // Prevent blocking other admins or yourself
   const canToggleBlock = (userToToggle: User) => {
     if (userToToggle.role === 'admin') {
       return false; // Can't block admins
     }
     return true;
+  };
+
+  const handleViewDetails = (user: User) => {
+    toast.info(`Viewing details for ${user.username}`);
   };
 
   return (
@@ -131,7 +140,7 @@ const UserTable = ({ readOnly = false }: UserTableProps) => {
             <TableHead className="text-right">Requests Today</TableHead>
             <TableHead>Last Active</TableHead>
             <TableHead>Join Date</TableHead>
-            <TableHead className="w-[80px]"></TableHead>
+            <TableHead className="w-[80px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -166,7 +175,7 @@ const UserTable = ({ readOnly = false }: UserTableProps) => {
                         )}
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleViewDetails(user)}>
                       <Eye className="mr-2 h-4 w-4" />
                       <span>View Details</span>
                     </DropdownMenuItem>

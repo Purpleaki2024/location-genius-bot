@@ -2,12 +2,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import AdminSection from "@/components/dashboard/AdminSection";
 import ManagerSection from "@/components/dashboard/ManagerSection";
 import UserSection from "@/components/dashboard/UserSection";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
 
 const RoleBasedContent = () => {
   const { user } = useAuth();
@@ -34,13 +33,24 @@ const RoleBasedContent = () => {
   
   if (!role) return null;
   
+  const getSectionTitle = () => {
+    switch (role) {
+      case "admin":
+        return "Admin Controls";
+      case "manager":
+        return "Operations Center";
+      case "user":
+        return "Your Activity";
+      default:
+        return "Dashboard";
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">
-          {role === "admin" && "Admin Controls"}
-          {role === "manager" && "Operations Center"}
-          {role === "user" && "Your Activity"}
+          {getSectionTitle()}
         </h2>
         
         <div className="flex items-center gap-2">
@@ -49,7 +59,17 @@ const RoleBasedContent = () => {
             size="sm" 
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? "Collapse" : "Expand"}
+            {expanded ? (
+              <>
+                <ChevronUp className="mr-2 h-4 w-4" />
+                Collapse
+              </>
+            ) : (
+              <>
+                <ChevronDown className="mr-2 h-4 w-4" />
+                Expand
+              </>
+            )}
           </Button>
           <Button variant="outline" size="sm" onClick={handleViewAll}>
             View All
