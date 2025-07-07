@@ -291,6 +291,45 @@ class LocationGeniusMCPServer {
               properties: {},
             },
           },
+          {
+            name: 'get_welcome_template',
+            description: 'Get the welcome message template for /start command',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                daily_limit: { type: 'number', description: 'Daily request limit', default: 3 },
+                remaining_requests: { type: 'number', description: 'Remaining requests for today', default: 3 },
+              },
+            },
+          },
+          {
+            name: 'get_location_template',
+            description: 'Get the location result template with location data',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                location_name: { type: 'string', description: 'Name of the location' },
+                country: { type: 'string', description: 'Country name' },
+                count: { type: 'number', description: 'Number of results', default: 1 },
+                nearby_location_1: { type: 'string', description: 'First nearby location name' },
+                country_code: { type: 'string', description: 'Country calling code' },
+                phone_number_1: { type: 'string', description: 'First phone number' },
+              },
+              required: ['location_name', 'country', 'nearby_location_1', 'country_code', 'phone_number_1'],
+            },
+          },
+          {
+            name: 'update_message_template',
+            description: 'Update a message template content',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', description: 'Template type (welcome, location_result)' },
+                content: { type: 'string', description: 'New template content' },
+              },
+              required: ['type', 'content'],
+            },
+          },
         ],
       };
     });
@@ -322,6 +361,12 @@ class LocationGeniusMCPServer {
             return await this.sendTelegramMessage(args);
           case 'get_telegram_bot_info':
             return await this.getTelegramBotInfo(args);
+          case 'get_welcome_template':
+            return await this.getWelcomeTemplate(args);
+          case 'get_location_template':
+            return await this.getLocationTemplate(args);
+          case 'update_message_template':
+            return await this.updateMessageTemplate(args);
           default:
             throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
         }
@@ -620,6 +665,125 @@ class LocationGeniusMCPServer {
         {
           type: 'text',
           text: JSON.stringify({ bot_info: result.result }, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async getWelcomeTemplate(args: { daily_limit?: number; remaining_requests?: number }) {
+    const { daily_limit = 3, remaining_requests = 3 } = args;
+    
+    const { data, error } = await supabase
+      .rpc('get_template_by_type', { template_type: 'welcome' });
+
+    if (error) {
+      throw new Error(`Failed to fetch welcome template: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      throw new Error('Welcome template not found');
+    }
+
+    const template = data[0];
+    let content = template.content;
+    
+    // Replace variables
+    content = content.replace(/\{daily_limit\}/g, daily_limit.toString());
+    content = content.replace(/\{remaining_requests\}/g, remaining_requests.toString());
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ 
+            template_id: template.id,
+            message: content,
+            variables_used: { daily_limit, remaining_requests }
+          }, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async getLocationTemplate(args: {
+    location_name: string;
+    country: string;
+    count?: number;
+    nearby_location_1: string;
+    country_code: string;
+    phone_number_1: string;
+  }) {
+    const { 
+      location_name, 
+      country, 
+      count = 1, 
+      nearby_location_1, 
+      country_code, 
+      phone_number_1 
+    } = args;
+    
+    const { data, error } = await supabase
+      .rpc('get_template_by_type', { template_type: 'location_result' });
+
+    if (error) {
+      throw new Error(`Failed to fetch location template: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) {
+      throw new Error('Location result template not found');
+    }
+
+    const template = data[0];
+    let content = template.content;
+    
+    // Replace variables
+    content = content.replace(/\{count\}/g, count.toString());
+    content = content.replace(/\{location_name\}/g, location_name);
+    content = content.replace(/\{country\}/g, country);
+    content = content.replace(/\{nearby_location_1\}/g, nearby_location_1);
+    content = content.replace(/\{country_code\}/g, country_code);
+    content = content.replace(/\{phone_number_1\}/g, phone_number_1);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ 
+            template_id: template.id,
+            message: content,
+            variables_used: args
+          }, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async updateMessageTemplate(args: { type: string; content: string }) {
+    const { type, content } = args;
+    
+    const { data, error } = await supabase
+      .from('message_templates')
+      .update({ 
+        content,
+        updated_at: new Date().toISOString()
+      })
+      .eq('type', type)
+      .eq('is_active', true)
+      .select();
+
+    if (error) {
+      throw new Error(`Failed to update template: ${error.message}`);
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ 
+            success: true, 
+            template: data[0],
+            message: 'Template updated successfully'
+          }, null, 2),
         },
       ],
     };

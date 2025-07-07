@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,6 +27,8 @@ import {
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { Edit, Trash2, Copy, Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Define the form schema
 const templateSchema = z.object({
@@ -40,56 +42,128 @@ const templateSchema = z.object({
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
 
-// Template type
+// Template type from database
 interface Template {
   id: string;
   name: string;
+  type: string;
   content: string;
-  lastUsed: string;
-  variables: string[];
+  variables: string[] | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-// Sample templates that match the UI in the image
-const defaultTemplates = [
-  {
-    id: "1",
-    name: "Welcome Message",
-    content: `Hello Gorgeous,
-
-As an esteemed member of The Location Finder Chat 💎, you are bestowed with the following limits:
-
-🎯 {daily_limit} requests per 24hrs
-⚡ {remaining_requests} requests left for today
-
-For immediate results, simply send a location code.
-
-Click /help for an array of other, tempting commands.`,
-    lastUsed: "2023-10-15",
-    variables: ["daily_limit", "remaining_requests"]
-  },
-  {
-    id: "2",
-    name: "Location Result",
-    content: `Here are {count} numbers near: {location_name}, {country}
-
-🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟
-🥇 *{nearby_location_1}*
-
-+{country_code} {phone_number_1}
-🔒 *Use password {location_name} - WhatsApp only* 🌟
-
-🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟`,
-    lastUsed: "2023-10-15",
-    variables: ["count", "location_name", "country", "nearby_location_1", "country_code", "phone_number_1"]
-  },
-];
-
 const TemplateMessageConfig = () => {
-  const [templates, setTemplates] = useState<Template[]>(defaultTemplates);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [templatePreview, setTemplatePreview] = useState<string>("");
+  const queryClient = useQueryClient();
+
+  // Fetch templates from database
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['message_templates'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('message_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching templates:', error);
+        throw error;
+      }
+      
+      return data as Template[];
+    },
+  });
+
+  // Create template mutation
+  const createTemplateMutation = useMutation({
+    mutationFn: async (values: TemplateFormValues & { type: string }) => {
+      const variables = extractVariables(values.content);
+      
+      const { data, error } = await supabase
+        .from('message_templates')
+        .insert([{
+          name: values.name,
+          type: values.type,
+          content: values.content,
+          variables: variables,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message_templates'] });
+      setIsCreateDialogOpen(false);
+      createForm.reset();
+      toast.success("Template created successfully!");
+    },
+    onError: (error) => {
+      console.error('Error creating template:', error);
+      toast.error("Failed to create template");
+    },
+  });
+
+  // Update template mutation
+  const updateTemplateMutation = useMutation({
+    mutationFn: async (values: TemplateFormValues) => {
+      if (!selectedTemplate) throw new Error('No template selected');
+      
+      const variables = extractVariables(values.content);
+
+      const { data, error } = await supabase
+        .from('message_templates')
+        .update({
+          name: values.name,
+          content: values.content,
+          variables: variables,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedTemplate.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message_templates'] });
+      setIsEditDialogOpen(false);
+      setSelectedTemplate(null);
+      toast.success("Template updated successfully!");
+    },
+    onError: (error) => {
+      console.error('Error updating template:', error);
+      toast.error("Failed to update template");
+    },
+  });
+
+  // Delete template mutation
+  const deleteTemplateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('message_templates')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message_templates'] });
+      toast.info("Template deleted");
+    },
+    onError: (error) => {
+      console.error('Error deleting template:', error);
+      toast.error("Failed to delete template");
+    },
+  });
 
   // Initialize create form
   const createForm = useForm<TemplateFormValues>({
@@ -111,42 +185,14 @@ const TemplateMessageConfig = () => {
 
   // Handle create form submission
   const onCreateSubmit = (values: TemplateFormValues) => {
-    // Extract variables from template content
-    const variables = extractVariables(values.content);
-    
-    // Add new template
-    const newTemplate = {
-      id: (templates.length + 1).toString(),
-      name: values.name,
-      content: values.content,
-      lastUsed: "Never",
-      variables: variables,
-    };
-    
-    setTemplates([...templates, newTemplate]);
-    setIsCreateDialogOpen(false);
-    createForm.reset();
-    toast.success("Template created successfully!");
+    // Generate a type based on the name (you can make this more sophisticated)
+    const type = values.name.toLowerCase().replace(/\s+/g, '_');
+    createTemplateMutation.mutate({ ...values, type });
   };
 
   // Handle edit form submission
   const onEditSubmit = (values: TemplateFormValues) => {
-    if (!selectedTemplate) return;
-
-    // Extract variables from template content
-    const variables = extractVariables(values.content);
-
-    // Update template
-    const updatedTemplates = templates.map(template => 
-      template.id === selectedTemplate.id 
-        ? { ...template, name: values.name, content: values.content, variables: variables }
-        : template
-    );
-    
-    setTemplates(updatedTemplates);
-    setIsEditDialogOpen(false);
-    setSelectedTemplate(null);
-    toast.success("Template updated successfully!");
+    updateTemplateMutation.mutate(values);
   };
 
   // Extract variables from template content
@@ -177,23 +223,13 @@ const TemplateMessageConfig = () => {
 
   // Handle template deletion
   const deleteTemplate = (id: string) => {
-    setTemplates(templates.filter(template => template.id !== id));
-    toast.info("Template deleted");
+    deleteTemplateMutation.mutate(id);
   };
 
   // Handle template usage
   const copyTemplate = (content: string) => {
     navigator.clipboard.writeText(content);
     toast.success("Template copied to clipboard!");
-    
-    // Update last used date
-    const updatedTemplates = templates.map(template => 
-      template.content === content 
-        ? { ...template, lastUsed: new Date().toISOString().split('T')[0] }
-        : template
-    );
-    
-    setTemplates(updatedTemplates);
   };
 
   // Handle template preview
@@ -201,13 +237,30 @@ const TemplateMessageConfig = () => {
     setTemplatePreview(content);
   };
 
+  // Set initial preview to first template
+  useEffect(() => {
+    if (templates.length > 0 && !templatePreview) {
+      setTemplatePreview(templates[0].content);
+    }
+  }, [templates, templatePreview]);
+
+  if (isLoading) {
+    return (
+      <div className="border border-border rounded-lg p-6">
+        <div className="flex items-center justify-center py-8">
+          <div className="text-muted-foreground">Loading templates...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="border border-border rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-xl font-semibold">Message Templates</h2>
           <p className="text-muted-foreground">
-            Create and manage templates for common messages
+            Create and manage templates for Telegram bot messages
           </p>
         </div>
         
@@ -218,11 +271,11 @@ const TemplateMessageConfig = () => {
               Create Template
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Template</DialogTitle>
               <DialogDescription>
-                Create a new message template for quick responses.
+                Create a new message template for your Telegram bot.
               </DialogDescription>
             </DialogHeader>
             
@@ -253,7 +306,7 @@ const TemplateMessageConfig = () => {
                       <FormLabel>Message Content</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Enter your message template here" 
+                          placeholder="Enter your message template here. Use {variable_name} for dynamic content." 
                           className="min-h-[120px]" 
                           {...field} 
                           onChange={(e) => {
@@ -263,7 +316,7 @@ const TemplateMessageConfig = () => {
                         />
                       </FormControl>
                       <FormDescription>
-                        The content of your message template
+                        Use curly braces like {"{variable_name}"} for dynamic content
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -271,7 +324,9 @@ const TemplateMessageConfig = () => {
                 />
                 
                 <DialogFooter>
-                  <Button type="submit">Save Template</Button>
+                  <Button type="submit" disabled={createTemplateMutation.isPending}>
+                    {createTemplateMutation.isPending ? "Creating..." : "Save Template"}
+                  </Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -280,7 +335,7 @@ const TemplateMessageConfig = () => {
         
         {/* Edit dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Template</DialogTitle>
               <DialogDescription>
@@ -315,7 +370,7 @@ const TemplateMessageConfig = () => {
                       <FormLabel>Message Content</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Enter your message template here" 
+                          placeholder="Enter your message template here. Use {variable_name} for dynamic content." 
                           className="min-h-[120px]" 
                           {...field} 
                           onChange={(e) => {
@@ -325,7 +380,7 @@ const TemplateMessageConfig = () => {
                         />
                       </FormControl>
                       <FormDescription>
-                        The content of your message template
+                        Use curly braces like {"{variable_name}"} for dynamic content
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -333,7 +388,9 @@ const TemplateMessageConfig = () => {
                 />
                 
                 <DialogFooter>
-                  <Button type="submit">Update Template</Button>
+                  <Button type="submit" disabled={updateTemplateMutation.isPending}>
+                    {updateTemplateMutation.isPending ? "Updating..." : "Update Template"}
+                  </Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -343,7 +400,7 @@ const TemplateMessageConfig = () => {
       
       {templates.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No templates created yet. Create your first template to get started.
+          No templates created yet. The default welcome and location templates have been added to your database.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -355,8 +412,11 @@ const TemplateMessageConfig = () => {
               type="button"
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium">{template.name}</h3>
-                <div className="flex gap-2">
+                <div>
+                  <h3 className="font-medium">{template.name}</h3>
+                  <p className="text-xs text-muted-foreground">Type: {template.type}</p>
+                </div>
+                <div className="flex gap-1">
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -365,8 +425,7 @@ const TemplateMessageConfig = () => {
                       copyTemplate(template.content);
                     }}
                   >
-                    <Copy className="h-4 w-4 mr-1" />
-                    Copy
+                    <Copy className="h-4 w-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -376,8 +435,7 @@ const TemplateMessageConfig = () => {
                       handleEditTemplate(template);
                     }}
                   >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
+                    <Edit className="h-4 w-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -386,9 +444,9 @@ const TemplateMessageConfig = () => {
                       e.stopPropagation();
                       deleteTemplate(template.id);
                     }}
+                    disabled={deleteTemplateMutation.isPending}
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -411,7 +469,7 @@ const TemplateMessageConfig = () => {
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Created: {template.lastUsed}
+                Updated: {new Date(template.updated_at).toLocaleDateString()}
               </p>
             </button>
           ))}
@@ -423,7 +481,9 @@ const TemplateMessageConfig = () => {
         <AspectRatio ratio={16 / 9} className="bg-muted rounded-md overflow-hidden">
           <div className="h-full w-full flex items-center justify-center p-4 overflow-auto">
             {templatePreview ? (
-              <div className="text-sm whitespace-pre-wrap">{templatePreview}</div>
+              <div className="text-sm whitespace-pre-wrap font-mono bg-white p-4 rounded border w-full max-w-md">
+                {templatePreview}
+              </div>
             ) : (
               <div className="text-muted-foreground text-sm">
                 Select a template to preview its content

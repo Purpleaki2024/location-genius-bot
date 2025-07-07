@@ -179,6 +179,42 @@ export type Database = {
         }
         Relationships: []
       }
+      message_templates: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          type: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          type: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          type?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       telegram_users: {
         Row: {
           first_name: string | null
@@ -307,6 +343,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           count: number
+        }[]
+      }
+      get_template_by_type: {
+        Args: { template_type: string }
+        Returns: {
+          id: string
+          name: string
+          content: string
+          variables: Json
         }[]
       }
       increment_bot_stats: {
