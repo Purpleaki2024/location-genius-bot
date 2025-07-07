@@ -113,7 +113,10 @@ export type Database = {
       locations: {
         Row: {
           active: boolean
+          additional_info: string | null
           address: string
+          code: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -121,14 +124,21 @@ export type Database = {
           lat: number
           lng: number
           name: string
+          password: string | null
+          phone_number: string | null
+          postcode: string | null
           rating: number
+          region: string | null
           type: string
           updated_at: string
           visits: number
         }
         Insert: {
           active?: boolean
+          additional_info?: string | null
           address: string
+          code?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -136,14 +146,21 @@ export type Database = {
           lat: number
           lng: number
           name: string
+          password?: string | null
+          phone_number?: string | null
+          postcode?: string | null
           rating?: number
+          region?: string | null
           type: string
           updated_at?: string
           visits?: number
         }
         Update: {
           active?: boolean
+          additional_info?: string | null
           address?: string
+          code?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -151,7 +168,11 @@ export type Database = {
           lat?: number
           lng?: number
           name?: string
+          password?: string | null
+          phone_number?: string | null
+          postcode?: string | null
           rating?: number
+          region?: string | null
           type?: string
           updated_at?: string
           visits?: number
