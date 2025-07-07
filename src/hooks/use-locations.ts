@@ -19,9 +19,9 @@ export interface Location {
   created_by: string | null;
   visits: number;
   active: boolean;
-  contact?: string;  // Added property
-  password?: string; // Added property
-  info?: string;     // Added property
+  contact?: string;
+  password?: string;
+  info?: string;
 }
 
 export type NewLocation = Omit<Location, 'id' | 'created_at' | 'updated_at' | 'created_by'>;
@@ -36,6 +36,8 @@ export const useLocations = () => {
     queryKey: ['locations', filter],
     queryFn: async () => {
       try {
+        console.log("Fetching locations with filter:", filter);
+        
         let query = supabase.from('locations').select('*');
         
         if (filter !== 'all') {
@@ -44,25 +46,29 @@ export const useLocations = () => {
         
         const { data, error } = await query.order('name');
         
+        console.log("Supabase response:", { data, error });
+        
         if (error) {
-          toast.error(`Failed to load locations: ${error.message}`);
+          console.error("Supabase error:", error);
           throw new Error(`Failed to load locations: ${error.message}`);
         }
         
-        return data as Location[];
+        console.log("Successfully fetched locations:", data?.length || 0);
+        return data as Location[] || [];
       } catch (err) {
+        console.error("useLocations error:", err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        toast.error(`Error: ${errorMessage}`);
-        throw err;
+        throw new Error(errorMessage);
       }
     },
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   // Add a new location
   const addLocation = useMutation({
     mutationFn: async (newLocation: NewLocation) => {
       try {
-        // Include visits field in the location data
         const locationWithDefaults = {
           ...newLocation,
           lat: newLocation.lat || 0,
@@ -77,28 +83,29 @@ export const useLocations = () => {
           .select();
         
         if (error) {
-          toast.error(`Failed to add location: ${error.message}`);
           throw new Error(`Failed to add location: ${error.message}`);
         }
         
         return data[0];
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        toast.error(`Error: ${errorMessage}`);
-        throw err;
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       toast.success('Location added successfully');
     },
+    onError: (error) => {
+      console.error("Add location error:", error);
+      toast.error(`Error: ${error.message}`);
+    }
   });
 
   // Update an existing location
   const updateLocation = useMutation({
     mutationFn: async ({ id, location }: { id: string; location: Partial<Location> }) => {
       try {
-        // Ensure visits field is preserved if not provided
         const updateData = {
           ...location,
           lat: location.lat ?? 0,
@@ -113,21 +120,23 @@ export const useLocations = () => {
           .select();
         
         if (error) {
-          toast.error(`Failed to update location: ${error.message}`);
           throw new Error(`Failed to update location: ${error.message}`);
         }
         
         return data[0];
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        toast.error(`Error: ${errorMessage}`);
-        throw err;
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       toast.success('Location updated successfully');
     },
+    onError: (error) => {
+      console.error("Update location error:", error);
+      toast.error(`Error: ${error.message}`);
+    }
   });
 
   // Delete a location
@@ -137,21 +146,23 @@ export const useLocations = () => {
         const { error } = await supabase.from('locations').delete().eq('id', id);
         
         if (error) {
-          toast.error(`Failed to delete location: ${error.message}`);
           throw new Error(`Failed to delete location: ${error.message}`);
         }
         
         return id;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        toast.error(`Error: ${errorMessage}`);
-        throw err;
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       toast.success('Location deleted successfully');
     },
+    onError: (error) => {
+      console.error("Delete location error:", error);
+      toast.error(`Error: ${error.message}`);
+    }
   });
 
   // Toggle location active status
@@ -165,21 +176,23 @@ export const useLocations = () => {
           .select();
         
         if (error) {
-          toast.error(`Failed to update location status: ${error.message}`);
           throw new Error(`Failed to update location status: ${error.message}`);
         }
         
         return data[0];
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-        toast.error(`Error: ${errorMessage}`);
-        throw err;
+        throw new Error(errorMessage);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       toast.success('Location status updated');
     },
+    onError: (error) => {
+      console.error("Toggle status error:", error);
+      toast.error(`Error: ${error.message}`);
+    }
   });
 
   return {

@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LocationModal from "@/components/LocationModal";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, ToggleLeft, ToggleRight, Download } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit, Trash2, ToggleLeft, ToggleRight, Download, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 const AdminLocations = () => {
@@ -30,6 +30,7 @@ const AdminLocations = () => {
   const {
     locations,
     isLoading,
+    error,
     addLocation,
     updateLocation,
     deleteLocation,
@@ -42,6 +43,8 @@ const AdminLocations = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editLocation, setEditLocation] = useState<Location | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<string | null>(null);
+  
+  console.log("AdminLocations render:", { locations, isLoading, error });
   
   // Filter locations based on search term
   const filteredLocations = locations.filter(location => 
@@ -172,171 +175,216 @@ const AdminLocations = () => {
     toast.info(`Searching for: ${searchTerm}`);
   };
 
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Error Loading Locations</h1>
+          <p className="text-muted-foreground mb-4">{error.message}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Loading locations...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading locations...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Admin header with controls */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex flex-1 items-center space-x-2">
-          <Input
-            placeholder="Search locations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-          <Button variant="outline" size="icon" onClick={handleSearch}>
-            <Search className="h-4 w-4" />
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-16 items-center px-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/dashboard')}
+            className="mr-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
           </Button>
+          <h1 className="text-2xl font-bold">Location Management</h1>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="space-y-6 p-6">
+        {/* Controls */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-1 items-center space-x-2">
+            <Input
+              placeholder="Search locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+            <Button variant="outline" size="icon" onClick={handleSearch}>
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div className="flex flex-wrap items-center space-x-2">
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {locationTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Button variant="outline" onClick={exportToCSV}>
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+            
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Location
+            </Button>
+          </div>
         </div>
         
-        <div className="flex flex-wrap items-center space-x-2">
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              {locationTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button variant="outline" onClick={exportToCSV}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Location
-          </Button>
-        </div>
-      </div>
-      
-      {/* Locations table */}
-      <div className="border border-border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Rating</TableHead>
-              <TableHead className="text-right">Visits</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[80px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredLocations.length === 0 ? (
+        {/* Locations table */}
+        <div className="border border-border rounded-lg">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  No locations found. 
-                  <Button 
-                    variant="link" 
-                    onClick={() => setShowAddModal(true)}
-                    className="pl-1 h-auto py-0"
-                  >
-                    Add one now
-                  </Button>
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Address</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Rating</TableHead>
+                <TableHead className="text-right">Visits</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
-            ) : (
-              filteredLocations.map(location => (
-                <TableRow key={location.id}>
-                  <TableCell className="font-medium">{location.name}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">{location.address}</TableCell>
-                  <TableCell>{getTypeBadge(location.type)}</TableCell>
-                  <TableCell>{location.rating.toFixed(1)}</TableCell>
-                  <TableCell className="text-right">{location.visits}</TableCell>
-                  <TableCell>
-                    <Badge variant={location.active ? "default" : "outline"}>
-                      {location.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
+            </TableHeader>
+            <TableBody>
+              {filteredLocations.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    {locations.length === 0 ? (
+                      <>
+                        No locations found. 
+                        <Button 
+                          variant="link" 
+                          onClick={() => setShowAddModal(true)}
+                          className="pl-1 h-auto py-0"
+                        >
+                          Add one now
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditLocation(location)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(location.id, location.active)}>
-                          {location.active ? (
-                            <>
-                              <ToggleLeft className="mr-2 h-4 w-4" />
-                              Deactivate
-                            </>
-                          ) : (
-                            <>
-                              <ToggleRight className="mr-2 h-4 w-4" />
-                              Activate
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setLocationToDelete(location.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </>
+                    ) : (
+                      `No locations match your search "${searchTerm}"`
+                    )}
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredLocations.length} of {locations.length} locations
-      </div>
-      
-      {/* Add/Edit Location Modal */}
-      <LocationModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSubmit={handleAdd}
-        isSubmitting={addLocation.isPending}
-        title="Add New Location"
-      />
-      
-      {editLocation && (
+              ) : (
+                filteredLocations.map(location => (
+                  <TableRow key={location.id}>
+                    <TableCell className="font-medium">{location.name}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{location.address}</TableCell>
+                    <TableCell>{getTypeBadge(location.type)}</TableCell>
+                    <TableCell>{location.rating.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">{location.visits}</TableCell>
+                    <TableCell>
+                      <Badge variant={location.active ? "default" : "outline"}>
+                        {location.active ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setEditLocation(location)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleStatus(location.id, location.active)}>
+                            {location.active ? (
+                              <>
+                                <ToggleLeft className="mr-2 h-4 w-4" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <ToggleRight className="mr-2 h-4 w-4" />
+                                Activate
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setLocationToDelete(location.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredLocations.length} of {locations.length} locations
+        </div>
+        
+        {/* Add/Edit Location Modal */}
         <LocationModal
-          isOpen={!!editLocation}
-          onClose={() => setEditLocation(null)}
-          onSubmit={handleEdit}
-          location={editLocation}
-          isSubmitting={updateLocation.isPending}
-          title="Edit Location"
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAdd}
+          isSubmitting={addLocation.isPending}
+          title="Add New Location"
         />
-      )}
-      
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!locationToDelete} onOpenChange={() => setLocationToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this location and cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        
+        {editLocation && (
+          <LocationModal
+            isOpen={!!editLocation}
+            onClose={() => setEditLocation(null)}
+            onSubmit={handleEdit}
+            location={editLocation}
+            isSubmitting={updateLocation.isPending}
+            title="Edit Location"
+          />
+        )}
+        
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!locationToDelete} onOpenChange={() => setLocationToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this location and cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 };
