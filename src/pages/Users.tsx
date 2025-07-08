@@ -22,7 +22,7 @@ const Users = () => {
   const canManageUsers = user?.permissions?.manageUsers ?? (user?.role === "admin" || user?.role === "manager");
   const canEditUsers = user?.role === "admin" || user?.role === "manager";
 
-  const { refetch: refetchUsers, isLoading: isRefreshing } = useUserManagement(searchTerm, selectedRole);
+  const { data: users, refetch: refetchUsers, isLoading: isRefreshing } = useUserManagement(searchTerm, selectedRole);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,9 +34,6 @@ const Users = () => {
   const handleExport = async () => {
     toast.info("Preparing user data export...");
     try {
-      // In a real implementation, you would fetch all users and generate CSV
-      const { data: users } = await useUserManagement().queryFn();
-      
       if (!users) {
         toast.error("No user data to export");
         return;

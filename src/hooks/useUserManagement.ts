@@ -44,7 +44,7 @@ export const useUserManagement = (searchTerm?: string, roleFilter?: string) => {
       // Transform and filter data
       let users = data?.map(user => ({
         ...user,
-        role: user.user_roles?.[0]?.role || 'user',
+        role: Array.isArray(user.user_roles) ? user.user_roles[0]?.role : user.user_roles?.role || 'user',
         join_date: user.first_seen || user.id
       })) as UserWithRole[];
 
@@ -54,6 +54,60 @@ export const useUserManagement = (searchTerm?: string, roleFilter?: string) => {
       }
 
       return users;
+    },
+  });
+};
+
+export const useUpdateUserRole = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: role as any
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user_management'] });
+      queryClient.invalidateQueries({ queryKey: ['telegram_users'] });
+      toast.success('User role updated successfully');
+    },
+    onError: (error) => {
+      console.error('Error updating user role:', error);
+      toast.error('Failed to update user role');
+    },
+  });
+};
+
+export const useBlockUser = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ userId, block }: { userId: string; block: boolean }) => {
+      const role = block ? 'blocked' : 'user';
+      
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({
+          user_id: userId,
+          role: role as any
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, { block }) => {
+      queryClient.invalidateQueries({ queryKey: ['user_management'] });
+      queryClient.invalidateQueries({ queryKey: ['telegram_users'] });
+      toast.success(`User ${block ? 'blocked' : 'unblocked'} successfully`);
+    },
+    onError: (error) => {
+      console.error('Error updating user status:', error);
+      toast.error('Failed to update user status');
     },
   });
 };
