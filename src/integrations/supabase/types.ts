@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      bot_health_checks: {
+        Row: {
+          active_connections: number | null
+          created_at: string | null
+          id: string
+          memory_usage_mb: number | null
+          response_time_ms: number | null
+          status: string
+          timestamp: string | null
+        }
+        Insert: {
+          active_connections?: number | null
+          created_at?: string | null
+          id?: string
+          memory_usage_mb?: number | null
+          response_time_ms?: number | null
+          status: string
+          timestamp?: string | null
+        }
+        Update: {
+          active_connections?: number | null
+          created_at?: string | null
+          id?: string
+          memory_usage_mb?: number | null
+          response_time_ms?: number | null
+          status?: string
+          timestamp?: string | null
+        }
+        Relationships: []
+      }
       bot_logs: {
         Row: {
           chat_id: string | null
@@ -88,6 +118,9 @@ export type Database = {
           longitude: string | null
           query: string | null
           query_type: string | null
+          response_time_ms: number | null
+          search_result_count: number | null
+          success: boolean | null
           telegram_user_id: string | null
         }
         Insert: {
@@ -97,6 +130,9 @@ export type Database = {
           longitude?: string | null
           query?: string | null
           query_type?: string | null
+          response_time_ms?: number | null
+          search_result_count?: number | null
+          success?: boolean | null
           telegram_user_id?: string | null
         }
         Update: {
@@ -106,6 +142,9 @@ export type Database = {
           longitude?: string | null
           query?: string | null
           query_type?: string | null
+          response_time_ms?: number | null
+          search_result_count?: number | null
+          success?: boolean | null
           telegram_user_id?: string | null
         }
         Relationships: []
@@ -324,6 +363,44 @@ export type Database = {
           },
         ]
       }
+      user_sessions: {
+        Row: {
+          command_count: number | null
+          created_at: string | null
+          duration_seconds: number | null
+          end_time: string | null
+          id: string
+          start_time: string | null
+          user_id: string | null
+        }
+        Insert: {
+          command_count?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          id?: string
+          start_time?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          command_count?: number | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          end_time?: string | null
+          id?: string
+          start_time?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -358,6 +435,16 @@ export type Database = {
           avg_duration_ms: number
         }[]
       }
+      get_bot_performance_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          date: string
+          total_requests: number
+          error_count: number
+          avg_duration_ms: number
+          success_rate: number
+        }[]
+      }
       get_bot_stats: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -377,6 +464,16 @@ export type Database = {
           error_count: number
         }[]
       }
+      get_location_search_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          date: string
+          total_searches: number
+          successful_searches: number
+          avg_response_time: number
+          unique_users: number
+        }[]
+      }
       get_telegram_user_count: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -390,6 +487,15 @@ export type Database = {
           name: string
           content: string
           variables: Json
+        }[]
+      }
+      get_user_activity_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          date: string
+          active_users: number
+          total_commands: number
+          avg_session_duration: number
         }[]
       }
       get_user_role: {
