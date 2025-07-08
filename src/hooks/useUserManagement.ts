@@ -44,7 +44,7 @@ export const useUserManagement = (searchTerm?: string, roleFilter?: string) => {
       // Transform and filter data
       let users = data?.map(user => ({
         ...user,
-        role: Array.isArray(user.user_roles) ? user.user_roles[0]?.role : user.user_roles?.role || 'user',
+        role: user.user_roles && Array.isArray(user.user_roles) ? user.user_roles[0]?.role : (user.user_roles as any)?.role || 'user',
         join_date: user.first_seen || user.id
       })) as UserWithRole[];
 

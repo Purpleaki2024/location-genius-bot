@@ -36,7 +36,7 @@ export const useTelegramUsers = () => {
       // Transform data to include role
       return data?.map(user => ({
         ...user,
-        role: Array.isArray(user.user_roles) ? user.user_roles[0]?.role : user.user_roles?.role || 'user'
+        role: user.user_roles && Array.isArray(user.user_roles) ? user.user_roles[0]?.role : (user.user_roles as any)?.role || 'user'
       })) as TelegramUser[];
     },
   });
