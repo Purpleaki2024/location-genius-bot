@@ -24,7 +24,7 @@ export const useTelegramUsers = () => {
         .from('telegram_users')
         .select(`
           *,
-          user_roles!inner(role)
+          user_roles(role)
         `)
         .order('last_seen', { ascending: false });
       
