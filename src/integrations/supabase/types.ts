@@ -221,7 +221,9 @@ export type Database = {
           first_seen: string | null
           id: string
           last_name: string | null
+          last_request_date: string | null
           last_seen: string | null
+          requests_today: number | null
           telegram_id: string
           username: string | null
         }
@@ -230,7 +232,9 @@ export type Database = {
           first_seen?: string | null
           id?: string
           last_name?: string | null
+          last_request_date?: string | null
           last_seen?: string | null
+          requests_today?: number | null
           telegram_id: string
           username?: string | null
         }
@@ -239,7 +243,9 @@ export type Database = {
           first_seen?: string | null
           id?: string
           last_name?: string | null
+          last_request_date?: string | null
           last_seen?: string | null
+          requests_today?: number | null
           telegram_id?: string
           username?: string | null
         }
@@ -285,6 +291,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_roles: {
+        Row: {
+          assigned_at: string | null
+          assigned_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -354,13 +384,28 @@ export type Database = {
           variables: Json
         }[]
       }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          user_id: string
+          check_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       increment_bot_stats: {
         Args: { stat_name: string; increment_by: number }
         Returns: undefined
       }
+      reset_daily_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "user" | "blocked"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -487,6 +532,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "user", "blocked"],
+    },
   },
 } as const
