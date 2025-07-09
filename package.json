@@ -10,11 +10,16 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite preview",
+    "bot:start": "./start-telegram-bot.sh",
+    "bot:test": "./test-bot.sh",
     "bot:deploy": "./deploy-bot.sh",
     "bot:cleanup": "./cleanup-python-bot.sh",
     "bot:test-setup": "./setup-bot-testing.sh",
     "bot:quick-fix": "cat QUICK_FIX_SQL.sql",
-    "bot:add-data": "node add-sample-data.mjs"
+    "bot:add-data": "node add-sample-data.mjs",
+    "bot:logs": "supabase functions logs telegram-webhook",
+    "bot:stop": "curl -X POST \"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook\"",
+    "bot:status": "curl -s \"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo\" | jq ."
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
