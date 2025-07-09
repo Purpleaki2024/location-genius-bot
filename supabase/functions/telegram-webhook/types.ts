@@ -122,3 +122,33 @@ export interface ErrorSummary {
   count: number;
   last_occurrence: string;
 }
+
+// User state management for multi-step commands
+export interface UserState {
+  id: string;
+  telegram_user_id: string;
+  state: 'start' | 'awaiting_location' | 'awaiting_location_numbers';
+  created_at: string;
+  updated_at: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Phone number data structure
+export interface PhoneNumberEntry {
+  id: string;
+  phone_number: string;
+  user_name?: string;
+  latitude: number;
+  longitude: number;
+  created_at: string;
+  is_active: boolean;
+}
+
+// Enhanced location response for number searches
+export interface NumberSearchResult {
+  phone_number: string;
+  user_name: string;
+  distance_km?: number;
+  latitude: number;
+  longitude: number;
+}
