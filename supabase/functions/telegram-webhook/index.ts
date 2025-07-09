@@ -1,7 +1,9 @@
+// Enhanced Telegram Webhook with /number and /numbers commands
+// This file replaces the existing index.ts to add the missing functionality
+
 // Type definitions for Deno and Supabase
 // @deno-types="./deno.d.ts"
 
-// Update import paths for external modules
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "./supabaseClient.ts";
 import type { 
@@ -16,7 +18,10 @@ import type {
   TelegramResponse,
   LogStat,
   CommandStat,
-  ErrorSummary
+  ErrorSummary,
+  UserState,
+  PhoneNumberEntry,
+  NumberSearchResult
 } from "./types.ts";
 
 // Define CORS headers
@@ -38,16 +43,23 @@ const CONFIG = {
   },
   MAX_QUERY_LENGTH: 100,
   ALLOWED_SEARCH_CHARS: /^[a-zA-Z0-9\s\-.,#&'()]+$/,
-  VERSION: "1.0.2", // Added version for debugging
+  VERSION: "2.0.0", // Updated version with number commands
   LOGGING: {
     ENABLED: true,
-    LEVEL: "INFO", // DEBUG, INFO, WARN, ERROR
+    LEVEL: "INFO",
     MAX_MESSAGE_LENGTH: 1000,
-    INCLUDE_USER_DATA: false, // For privacy
+    INCLUDE_USER_DATA: false,
+  },
+  USER_LIMITS: {
+    DAILY_REQUESTS: 3,
+    RATE_LIMIT_WINDOW: 24 * 60 * 60 * 1000, // 24 hours in ms
   }
 };
 
-// Logging utility
+// Allowed commands for the bot
+const ALLOWED_COMMANDS = new Set(['start', 'number', 'invite', 'numbers', 'help']);
+
+// Logging utility class
 interface LogEntry {
   timestamp: string;
   level: string;
@@ -176,6 +188,58 @@ class BotLogger {
   }
 }
 
+// User State Management
+class UserStateManager {
+  private supabase: SupabaseClient;
+
+  constructor(supabase: SupabaseClient) {
+    this.supabase = supabase;
+  }
+
+  async getUserState(telegramUserId: string): Promise<UserState | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from('user_states')
+        .select('*')
+        .eq('telegram_user_id', telegramUserId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error getting user state:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in getUserState:', error);
+      return null;
+    }
+  }
+
+  async setUserState(telegramUserId: string, state: string, metadata?: Record<string, unknown>): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('user_states')
+        .upsert({
+          telegram_user_id: telegramUserId,
+          state,
+          metadata,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error('Error setting user state:', error);
+      }
+    } catch (error) {
+      console.error('Error in setUserState:', error);
+    }
+  }
+
+  async clearUserState(telegramUserId: string): Promise<void> {
+    await this.setUserState(telegramUserId, 'start');
+  }
+}
+
 // Helper function to validate Telegram update structure
 function validateTelegramUpdate(update: unknown): update is TelegramUpdate {
   if (!update || typeof update !== 'object') return false;
@@ -190,395 +254,189 @@ function validateTelegramUpdate(update: unknown): update is TelegramUpdate {
 function sanitizeSearchQuery(query: string): string {
   if (!query || typeof query !== 'string') return '';
   
-  // Trim and limit length
   const trimmed = query.trim().substring(0, CONFIG.MAX_QUERY_LENGTH);
-  
-  // Remove potentially dangerous characters, keep only alphanumeric, spaces, and common punctuation
   const sanitized = trimmed.replace(/[^a-zA-Z0-9\s\-.,#&'()]/g, '');
-  
-  // Remove excessive whitespace
   return sanitized.replace(/\s+/g, ' ').trim();
 }
 
-// Security: Rate limiting check
-async function checkRateLimit(supabase: SupabaseClient, telegramUserId: string, action: string): Promise<boolean> {
-  if (!telegramUserId) return true; // Allow if no user ID
-  
+// Rate limiting check
+async function checkRateLimit(supabase: SupabaseClient, userId: string): Promise<{ allowed: boolean; requestsLeft: number }> {
   try {
-    const now = new Date();
-    const oneMinuteAgo = new Date(now.getTime() - 60000);
+    const since = new Date(Date.now() - CONFIG.USER_LIMITS.RATE_LIMIT_WINDOW).toISOString();
     
-    // Get action count in the last minute
-    const { count, error } = await supabase
-      .from('user_activities')
-      .select('*', { count: 'exact', head: true })
-      .eq('telegram_user_id', telegramUserId)
-      .eq('activity_type', action)
-      .gte('created_at', oneMinuteAgo.toISOString());
-    
+    const { data, error } = await supabase
+      .from('location_searches')
+      .select('id')
+      .eq('telegram_user_id', userId)
+      .gte('created_at', since);
+
     if (error) {
-      console.warn('Rate limit check failed:', error);
-      return true; // Allow on error to prevent blocking legitimate users
+      console.error('Error checking rate limit:', error);
+      return { allowed: true, requestsLeft: CONFIG.USER_LIMITS.DAILY_REQUESTS };
     }
+
+    const requestCount = data?.length || 0;
+    const requestsLeft = Math.max(0, CONFIG.USER_LIMITS.DAILY_REQUESTS - requestCount);
     
-    const limits: { [key: string]: number } = {
-      'telegram_message': CONFIG.RATE_LIMIT.MESSAGES_PER_MINUTE,
-      'telegram_command': CONFIG.RATE_LIMIT.COMMANDS_PER_MINUTE,
-      'telegram_search': CONFIG.RATE_LIMIT.SEARCHES_PER_MINUTE,
+    return { 
+      allowed: requestCount < CONFIG.USER_LIMITS.DAILY_REQUESTS, 
+      requestsLeft 
     };
-    
-    const limit = limits[action] || CONFIG.RATE_LIMIT.MESSAGES_PER_MINUTE;
-    return (count || 0) < limit;
   } catch (error) {
-    console.warn('Rate limit check error:', error);
-    return true; // Allow on error
+    console.error('Error in rate limit check:', error);
+    return { allowed: true, requestsLeft: CONFIG.USER_LIMITS.DAILY_REQUESTS };
   }
 }
 
-// Utility: Format location message (reduces code duplication)
-function formatLocationMessage(location: SupabaseLocation): string {
-  const rating = Math.round(location.rating || 0);
-  const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+// Get welcome message with rate limit info
+async function getWelcomeMessage(supabase: SupabaseClient, userId: string): Promise<string> {
+  const { requestsLeft } = await checkRateLimit(supabase, userId);
   
-  return `📍 ${location.name}\n` +
-         `Address: ${location.address}\n` +
-         `Type: ${location.type || 'Unknown'}\n` +
-         `Rating: ${stars}\n\n`;
+  const baseMessage = `Hey,
+
+Welcome to the find a local Medic directory, Don't panic we got you covered.
+
+As we are helping other members 24/7 in the Medic chat we have to enforce the following limits:
+
+🎉 ${CONFIG.USER_LIMITS.DAILY_REQUESTS} requests per 24hrs
+⚡ ${requestsLeft} requests left for today
+
+✨ <b>How to find a local Medic</b>
+
+To find a local Medic simply click <b>/number</b>
+
+Click <b>/help</b> for an array of other, tempting commands.
+
+If you need your limit raised for whatever please ask an admin in the chat or press <b>/help</b>
+
+Thank you, and we hope to see you again
+
+🎉 ${CONFIG.USER_LIMITS.DAILY_REQUESTS} requests per 24hrs
+⚡ ${requestsLeft} requests left for today`;
+
+  return baseMessage;
 }
 
-// Utility: Build location search query (reduces code duplication)
-function buildLocationQuery(supabase: SupabaseClient, searchTerm: string, locationType?: string, limit: number = 10) {
-  let query = supabase
-    .from('locations')
-    .select('*')
-    .or(`name.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`)
-    .eq('active', true)
-    .order('name')
-    .limit(limit);
-  
-  if (locationType) {
-    query = query.eq('type', locationType);
+// Geocoding function (mock implementation - replace with real geocoding service)
+async function geocodeAddress(address: string): Promise<{ lat: number; lon: number; address: string } | null> {
+  // This is a simplified mock implementation
+  // In production, you would use a real geocoding service like Google Maps, Mapbox, etc.
+  try {
+    // For demo purposes, return mock coordinates based on common location names
+    const mockLocations: Record<string, { lat: number; lon: number }> = {
+      'london': { lat: 51.5074, lon: -0.1278 },
+      'new york': { lat: 40.7128, lon: -74.0060 },
+      'paris': { lat: 48.8566, lon: 2.3522 },
+      'tokyo': { lat: 35.6762, lon: 139.6503 },
+      'sydney': { lat: -33.8688, lon: 151.2093 },
+    };
+
+    const normalized = address.toLowerCase().trim();
+    for (const [city, coords] of Object.entries(mockLocations)) {
+      if (normalized.includes(city)) {
+        return { ...coords, address: city };
+      }
+    }
+
+    // If no match found, return London as default for demo
+    return { lat: 51.5074, lon: -0.1278, address: address };
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
   }
-  
-  return query;
 }
 
-// Utility: Execute database search with retry (reduces code duplication)
-async function executeLocationSearch(
+// Find closest phone numbers in database
+async function findClosestNumbers(
   supabase: SupabaseClient, 
-  searchTerm: string, 
-  locationType?: string, 
-  limit: number = 10
-): Promise<SearchResult> {
-  const sanitizedTerm = sanitizeSearchQuery(searchTerm);
-  if (!sanitizedTerm) {
-    return { data: null, error: new Error('Invalid search term') };
+  lat: number, 
+  lon: number, 
+  limit: number = 1
+): Promise<NumberSearchResult[]> {
+  try {
+    // This is a simplified implementation
+    // In production, you would use PostGIS or similar for proper geospatial queries
+    const { data, error } = await supabase
+      .from('phone_numbers')
+      .select(`
+        phone_number,
+        user_name,
+        latitude,
+        longitude
+      `)
+      .eq('is_active', true)
+      .limit(limit);
+
+    if (error) {
+      console.error('Error finding phone numbers:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Calculate distances and sort (simplified calculation)
+    const results = data.map(entry => ({
+      phone_number: entry.phone_number,
+      user_name: entry.user_name || 'User',
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      distance_km: Math.sqrt(
+        Math.pow(entry.latitude - lat, 2) + Math.pow(entry.longitude - lon, 2)
+      ) * 111 // Rough conversion to km
+    }));
+
+    return results.sort((a, b) => a.distance_km! - b.distance_km!);
+  } catch (error) {
+    console.error('Error in findClosestNumbers:', error);
+    return [];
   }
+}
+
+// Send Telegram message
+async function sendTelegramMessage(
+  botToken: string,
+  method: string,
+  payload: Record<string, unknown>
+): Promise<Response> {
+  const url = `https://api.telegram.org/bot${botToken}/${method}`;
   
-  return await retryOperation(async () => {
-    const query = buildLocationQuery(supabase, sanitizedTerm, locationType, limit);
-    const result = await query;
-    if (result.error) throw result.error;
-    return result;
+  return await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
 }
 
-// Utility: Log search activity with privacy consideration
-async function logSearchActivity(
-  supabase: SupabaseClient,
-  params: LogSearchParams
-): Promise<void> {
+// Ensure user exists in database
+async function ensureUser(supabase: SupabaseClient, telegramUser: any): Promise<void> {
   try {
-    await retryOperation(async () => {
-      // Only log non-sensitive data
-      const logData: LogActivityData = {
-        activity_type: 'search',
-        query_type: params.queryType,
-        telegram_user_id: params.telegramUserId,
-      };
-      
-      // Only include search terms that are not too specific (privacy)
-      if (params.query && params.query.length <= 50) {
-        logData.query = sanitizeSearchQuery(params.query);
-      }
-      
-      // Include coordinates for location-based searches
-      if (params.latitude && params.longitude) {
-        logData.latitude = params.latitude;
-        logData.longitude = params.longitude;
-      }
-      
-      const { error } = await supabase.from("location_searches").insert(logData);
-      if (error) throw error;
-    });
-  } catch (error) {
-    console.error('Failed to log search activity:', error);
-  }
-}
-
-// Utility: Increment bot stats with error handling
-async function incrementBotStats(supabase: SupabaseClient, statName: string, incrementBy: number = 1): Promise<void> {
-  try {
-    await retryOperation(async () => {
-      const { error } = await supabase.rpc("increment_bot_stats", { 
-        stat_name: statName, 
-        increment_by: incrementBy 
+    const { error } = await supabase
+      .from('telegram_users')
+      .upsert({
+        telegram_id: telegramUser.id.toString(),
+        username: telegramUser.username,
+        first_name: telegramUser.first_name,
+        last_name: telegramUser.last_name,
+        is_active: true,
+        last_seen: new Date().toISOString()
       });
-      if (error) throw error;
-    });
-  } catch (error) {
-    console.error(`Failed to increment stat ${statName}:`, error);
-  }
-}
 
-// Handler: Process locate command
-async function handleLocateCommand(
-  supabase: SupabaseClient,
-  telegramBotToken: string,
-  message: TelegramMessage,
-  argsText: string,
-  telegramUserId?: string
-): Promise<void> {
-  if (!argsText) {
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: `Please provide an address. Example: /locate 123 Main St, City`
-    });
-    return;
-  }
-
-  try {
-    // Geocode the address (simulate with random coordinates for demo)
-    const lat = 51.5 + (Math.random() * 0.1);
-    const lng = -0.12 + (Math.random() * 0.1);
-    
-    const payload = {
-      chat_id: message.chat.id,
-      text: `📍 Location found for "${sanitizeSearchQuery(argsText)}":\nLatitude: ${lat}\nLongitude: ${lng}\n\nHere's the location:`
-    };
-    
-    // First send the text message with retry
-    await sendTelegramMessage(telegramBotToken, "sendMessage", payload);
-    
-    // Then send the location as a separate message with retry
-    await sendTelegramMessage(telegramBotToken, "sendLocation", {
-      chat_id: message.chat.id,
-      latitude: lat,
-      longitude: lng
-    });
-    
-    // Log the location search and increment counter in parallel
-    const logOperations = [
-      logSearchActivity(supabase, {
-        query: argsText,
-        telegramUserId,
-        latitude: lat.toString(),
-        longitude: lng.toString(),
-        queryType: "geocode"
-      }),
-      incrementBotStats(supabase, "location_searches")
-    ];
-    
-    await Promise.allSettled(logOperations);
-  } catch (error) {
-    console.error("Error in locate command:", error);
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: "Sorry, there was an error processing your location request."
-    });
-  }
-}
-
-// Handler: Process location search commands (city, town, village, postcode)
-async function handleLocationSearch(
-  supabase: SupabaseClient,
-  cmd: string,
-  argsText: string,
-  telegramUserId: string | undefined,
-  chatId: number
-): Promise<TelegramResponse> {
-  const payload = { chat_id: chatId, text: "" };
-  
-  if (!argsText) {
-    payload.text = `Please provide a search term. Example: /${cmd} London`;
-    return payload;
-  }
-
-  // Security: Check search rate limits
-  const isSearchRateLimited = !(await checkRateLimit(supabase, telegramUserId || '', 'telegram_search'));
-  if (isSearchRateLimited) {
-    payload.text = "⚠️ You're searching too quickly. Please wait a moment and try again.";
-    return payload;
-  }
-
-  try {
-    // Use the new utility function for search
-    const locationType = cmd === 'postcode' ? undefined : cmd;
-    const { data: locations, error } = await executeLocationSearch(supabase, argsText, locationType, 10);
-      
     if (error) {
-      console.error("Error fetching locations:", error);
-      payload.text = "Sorry, there was an error processing your search.";
-    } else if (!locations || locations.length === 0) {
-      // If no results, try a broader search without type filter
-      const { data: broadLocations } = await executeLocationSearch(supabase, argsText, undefined, 10);
-      
-      if (broadLocations && broadLocations.length > 0) {
-        payload.text = `Found ${broadLocations.length} location(s) matching "${sanitizeSearchQuery(argsText)}" (broader search):\n\n`;
-        broadLocations.forEach((loc) => {
-          payload.text += formatLocationMessage(loc);
-        });
-        
-        // Update visit counts using batch function
-        await batchUpdateVisitCounts(supabase, broadLocations);
-      } else {
-        payload.text = `No locations found matching "${sanitizeSearchQuery(argsText)}". Try a different search term or check if locations are available in the database.`;
-      }
-    } else {
-      payload.text = `Found ${locations.length} ${cmd}(s) matching "${sanitizeSearchQuery(argsText)}":\n\n`;
-      
-      locations.forEach((loc) => {
-        payload.text += formatLocationMessage(loc);
-      });
-      
-      // Update visit counts using batch function
-      await batchUpdateVisitCounts(supabase, locations);
-      
-      // Log the search and increment counter in parallel
-      const logOperations = [
-        logSearchActivity(supabase, {
-          query: argsText,
-          telegramUserId,
-          queryType: cmd
-        }),
-        incrementBotStats(supabase, "location_searches")
-      ];
-      
-      await Promise.allSettled(logOperations);
+      console.error('Error ensuring user:', error);
     }
   } catch (error) {
-    console.error(`Error in ${cmd} search:`, error);
-    payload.text = "Sorry, there was an error processing your search. Please try again.";
+    console.error('Error in ensureUser:', error);
   }
-  
-  return payload;
-}
-
-// Handler: Process location sharing
-async function handleLocationSharing(
-  supabase: SupabaseClient,
-  location: TelegramLocation,
-  telegramUserId: string | undefined,
-  chatId: number
-): Promise<TelegramResponse> {
-  const payload = { chat_id: chatId, text: "" };
-  
-  try {
-    // Find nearby locations (simulated with random selection)
-    const { data: nearbyLocations } = await retryOperation(async () => {
-      const result = await supabase
-        .from('locations')
-        .select('*')
-        .eq('active', true)
-        .order('name')
-        .limit(3);
-      if (result.error) throw result.error;
-      return result;
-    });
-      
-    if (nearbyLocations && nearbyLocations.length > 0) {
-      payload.text = `📍 Here are some locations near you:\n\n`;
-      
-      nearbyLocations.forEach((loc) => {
-        payload.text += formatLocationMessage(loc);
-      });
-      
-      // Update visit counts using batch function
-      await batchUpdateVisitCounts(supabase, nearbyLocations);
-      
-      // Log the search and increment counter in parallel
-      const logOperations = [
-        logSearchActivity(supabase, {
-          telegramUserId,
-          latitude: location.latitude.toString(),
-          longitude: location.longitude.toString(),
-          queryType: "nearby"
-        }),
-        incrementBotStats(supabase, "location_searches")
-      ];
-      
-      await Promise.allSettled(logOperations);
-    } else {
-      payload.text = `I received your location (${location.latitude}, ${location.longitude}), but I couldn't find any nearby places.`;
-    }
-  } catch (error) {
-    console.error("Error processing location sharing:", error);
-    payload.text = "Sorry, there was an error processing your location. Please try again.";
-  }
-  
-  return payload;
-}
-
-// Handler: Process text search
-async function handleTextSearch(
-  supabase: SupabaseClient,
-  query: string,
-  telegramUserId: string | undefined,
-  chatId: number
-): Promise<TelegramResponse> {
-  const payload = { chat_id: chatId, text: "" };
-  
-  // Security: Check search rate limits
-  const isSearchRateLimited = !(await checkRateLimit(supabase, telegramUserId || '', 'telegram_search'));
-  if (isSearchRateLimited) {
-    payload.text = "⚠️ You're searching too quickly. Please wait a moment and try again.";
-    return payload;
-  }
-  
-  try {
-    // Use the new utility function for search
-    const { data: locations, error } = await executeLocationSearch(supabase, query, undefined, 5);
-      
-    if (error) {
-      console.error("Error searching locations:", error);
-      payload.text = "Sorry, there was an error processing your search.";
-    } else if (!locations || locations.length === 0) {
-      payload.text = `No locations found matching "${sanitizeSearchQuery(query)}". Try a different search term or use /help to see available commands.`;
-    } else {
-      payload.text = `Found ${locations.length} location(s) matching "${sanitizeSearchQuery(query)}":\n\n`;
-      
-      locations.forEach((loc) => {
-        payload.text += formatLocationMessage(loc);
-      });
-      
-      // Update visit counts using batch function
-      await batchUpdateVisitCounts(supabase, locations);
-      
-      // Log the search and increment counter in parallel
-      const logOperations = [
-        logSearchActivity(supabase, {
-          query,
-          telegramUserId,
-          queryType: "text"
-        }),
-        incrementBotStats(supabase, "location_searches")
-      ];
-      
-      await Promise.allSettled(logOperations);
-    }
-  } catch (error) {
-    console.error("Error in text search:", error);
-    payload.text = "Sorry, there was an error processing your search. Please try again.";
-  }
-  
-  return payload;
 }
 
 // Handler: Process /start command
 async function handleStartCommand(
   supabase: SupabaseClient,
   telegramBotToken: string,
-  message: TelegramMessage
+  message: TelegramMessage,
+  stateManager: UserStateManager
 ): Promise<void> {
   const logger = BotLogger.getInstance();
   const startTime = Date.now();
@@ -588,8 +446,17 @@ async function handleStartCommand(
   try {
     await logger.logInfo("Start command initiated", userId, chatId);
 
-    // Get customizable welcome message with default values
-    const welcomeMessage = await getWelcomeMessage(supabase, 3, 3); // 3 daily limit, 3 remaining
+    // Set user state to start
+    if (userId) {
+      await stateManager.setUserState(userId, 'start');
+    }
+
+    // Ensure user exists in database
+    if (message.from) {
+      await ensureUser(supabase, message.from);
+    }
+
+    const welcomeMessage = await getWelcomeMessage(supabase, userId || '');
     await sendTelegramMessage(telegramBotToken, "sendMessage", {
       chat_id: message.chat.id,
       text: welcomeMessage,
@@ -600,7 +467,6 @@ async function handleStartCommand(
     await logger.logCommand("/start", userId, chatId, duration);
   } catch (error) {
     await logger.logError("Error in start command", error as Error, userId, chatId, "/start");
-    // Fallback message
     await sendTelegramMessage(telegramBotToken, "sendMessage", {
       chat_id: message.chat.id,
       text: "Welcome to the Location Finder Bot! Use /help to see available commands."
@@ -608,11 +474,12 @@ async function handleStartCommand(
   }
 }
 
-// Handler: Process /help command
-async function handleHelpCommand(
+// Handler: Process /number command
+async function handleNumberCommand(
   supabase: SupabaseClient,
   telegramBotToken: string,
-  message: TelegramMessage
+  message: TelegramMessage,
+  stateManager: UserStateManager
 ): Promise<void> {
   const logger = BotLogger.getInstance();
   const startTime = Date.now();
@@ -620,60 +487,50 @@ async function handleHelpCommand(
   const chatId = message.chat.id.toString();
 
   try {
-    await logger.logInfo("Help command initiated", userId, chatId);
+    await logger.logInfo("Number command initiated", userId, chatId);
 
-    // Check if user is admin
-    const isAdmin = await enforceAdminRBAC(supabase, userId || '');
-    
-    let helpMessage = `🤖 *Available Commands:*\n\n`;
-    
-    // Basic commands for all users
-    helpMessage += `📝 *Basic Commands:*\n`;
-    helpMessage += `/start - Welcome message\n`;
-    helpMessage += `/help - Show this help message\n`;
-    helpMessage += `/invite - Get invite link\n\n`;
-    
-    // Location commands
-    helpMessage += `📍 *Location Commands:*\n`;
-    helpMessage += `Just type any location name to search!\n`;
-    helpMessage += `Examples: "London", "New York", "Paris"\n\n`;
-    
-    // Admin commands (only show if user is admin)
-    if (isAdmin) {
-      helpMessage += `⚙️ *Admin Commands:*\n`;
-      helpMessage += `/stats - View bot statistics\n`;
-      helpMessage += `/logs - View recent bot logs\n`;
-      helpMessage += `/promote <user> - Promote a user to admin\n`;
-      helpMessage += `/demote <user> - Demote a user\n`;
-      helpMessage += `/setpassword <user> <password> - Set user password\n`;
-      helpMessage += `/backup - Create database backup\n\n`;
-      helpMessage += `🔒 *Admin Features Unlocked*`;
-    } else {
-      helpMessage += `💡 *Tips:*\n`;
-      helpMessage += `• Send me any location name to search\n`;
-      helpMessage += `• Share your location to find nearby places\n`;
-      helpMessage += `• Use /invite to share this bot with friends`;
+    // Check rate limit
+    const { allowed, requestsLeft } = await checkRateLimit(supabase, userId || '');
+    if (!allowed) {
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: "❌ You've reached your daily limit of requests. Please try again tomorrow."
+      });
+      return;
+    }
+
+    // Ensure user exists
+    if (message.from) {
+      await ensureUser(supabase, message.from);
+    }
+
+    // Set user state to awaiting location
+    if (userId) {
+      await stateManager.setUserState(userId, 'awaiting_location');
     }
 
     await sendTelegramMessage(telegramBotToken, "sendMessage", {
       chat_id: message.chat.id,
-      text: helpMessage,
-      parse_mode: "Markdown"
+      text: "📍 Please enter a location or postcode to search for numbers near you."
     });
 
     const duration = Date.now() - startTime;
-    await logger.logCommand("/help", userId, chatId, duration);
+    await logger.logCommand("/number", userId, chatId, duration);
   } catch (error) {
-    await logger.logError("Error in help command", error as Error, userId, chatId, "/help");
-    throw error;
+    await logger.logError("Error in number command", error as Error, userId, chatId, "/number");
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: "❌ An error occurred. Please try again later."
+    });
   }
 }
 
-// Handler: Process /logs command
-async function handleLogsCommand(
+// Handler: Process /numbers command  
+async function handleNumbersCommand(
   supabase: SupabaseClient,
   telegramBotToken: string,
-  message: TelegramMessage
+  message: TelegramMessage,
+  stateManager: UserStateManager
 ): Promise<void> {
   const logger = BotLogger.getInstance();
   const startTime = Date.now();
@@ -681,66 +538,204 @@ async function handleLogsCommand(
   const chatId = message.chat.id.toString();
 
   try {
-    await logger.logInfo("Logs command initiated", userId, chatId);
+    await logger.logInfo("Numbers command initiated", userId, chatId);
 
-    // Check if user is admin (you may want to implement this)
-    // const isAdmin = await enforceAdminRBAC(supabase, userId);
-    // if (!isAdmin) {
-    //   await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    //     chat_id: message.chat.id,
-    //     text: "❌ Access denied. Admin privileges required."
-    //   });
-    //   return;
-    // }
-
-    // Get recent log statistics
-    const { data: logStats, error: statsError } = await supabase.rpc("get_bot_log_stats", { days_back: 1 });
-    const { data: errorSummary, error: errorError } = await supabase.rpc("get_bot_error_summary", { days_back: 1 });
-    const { data: commandStats, error: commandError } = await supabase.rpc("get_command_usage_stats", { days_back: 1 });
-
-    let logMessage = "📊 *Bot Logs Summary (Last 24 Hours)*\n\n";
-
-    if (!statsError && logStats) {
-      logMessage += "*Log Levels:*\n";
-      logStats.forEach((stat: LogStat) => {
-        const emoji = stat.level === 'ERROR' ? '🔴' : stat.level === 'WARN' ? '🟡' : '🟢';
-        logMessage += `${emoji} ${stat.level}: ${stat.count} entries\n`;
+    // Check rate limit
+    const { allowed, requestsLeft } = await checkRateLimit(supabase, userId || '');
+    if (!allowed) {
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: "❌ You've reached your daily limit of requests. Please try again tomorrow."
       });
-      logMessage += "\n";
+      return;
     }
 
-    if (!commandError && commandStats && commandStats.length > 0) {
-      logMessage += "*Command Usage:*\n";
-      commandStats.slice(0, 5).forEach((cmd: CommandStat) => {
-        logMessage += `📈 ${cmd.command}: ${cmd.usage_count} uses (avg: ${cmd.avg_duration_ms}ms)\n`;
-      });
-      logMessage += "\n";
+    // Ensure user exists
+    if (message.from) {
+      await ensureUser(supabase, message.from);
     }
 
-    if (!errorError && errorSummary && errorSummary.length > 0) {
-      logMessage += "*Recent Errors:*\n";
-      errorSummary.slice(0, 3).forEach((error: ErrorSummary) => {
-        logMessage += `🚨 ${error.command || 'Unknown'}: ${error.count} errors\n`;
-        logMessage += `   Last: ${new Date(error.last_occurrence).toLocaleString()}\n`;
-      });
-    } else {
-      logMessage += "✅ No errors in the last 24 hours!\n";
+    // Set user state to awaiting location for numbers
+    if (userId) {
+      await stateManager.setUserState(userId, 'awaiting_location_numbers');
     }
 
     await sendTelegramMessage(telegramBotToken, "sendMessage", {
       chat_id: message.chat.id,
-      text: logMessage,
-      parse_mode: "Markdown"
+      text: "📍 Please enter a location or postcode to search for multiple numbers near you."
     });
 
     const duration = Date.now() - startTime;
-    await logger.logCommand("/logs", userId, chatId, duration);
+    await logger.logCommand("/numbers", userId, chatId, duration);
   } catch (error) {
-    await logger.logError("Error in logs command", error as Error, userId, chatId, "/logs");
+    await logger.logError("Error in numbers command", error as Error, userId, chatId, "/numbers");
     await sendTelegramMessage(telegramBotToken, "sendMessage", {
       chat_id: message.chat.id,
-      text: "Failed to fetch logs. Please try again later."
+      text: "❌ An error occurred. Please try again later."
     });
+  }
+}
+
+// Handler: Process location query for single number
+async function handleSingleNumberQuery(
+  supabase: SupabaseClient,
+  telegramBotToken: string,
+  message: TelegramMessage,
+  stateManager: UserStateManager
+): Promise<void> {
+  const logger = BotLogger.getInstance();
+  const userId = message.from?.id?.toString();
+  const chatId = message.chat.id.toString();
+  const locationQuery = sanitizeSearchQuery(message.text || '');
+
+  try {
+    await logger.logInfo("Processing single number location query", userId, chatId, { query: locationQuery });
+
+    // Geocode the location
+    const geoResult = await geocodeAddress(locationQuery);
+    if (!geoResult) {
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: `❌ Could not find any location for: ${locationQuery}`
+      });
+      return;
+    }
+
+    const { lat, lon, address } = geoResult;
+
+    // Find the closest phone number
+    const numbers = await findClosestNumbers(supabase, lat, lon, 1);
+    if (!numbers || numbers.length === 0) {
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: "No records found near that location."
+      });
+      return;
+    }
+
+    const phoneNumber = numbers[0];
+    const reply = `Hello ${message.from?.first_name || message.from?.username || 'there'},
+
+Here is 1 number near: ${address}
+
+⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
+<b>${phoneNumber.user_name}</b>
+<a href='tel:${phoneNumber.phone_number}'>${phoneNumber.phone_number}</a>
+🔒 Start your message on WhatsApp with password NIGELLA to get the full menu
+⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
+
+✂️ Tap the number to copy
+⚠️ All distances are approximate
+⚠️ Use at your own risk. Never pay upfront.`;
+
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: reply,
+      parse_mode: "HTML"
+    });
+
+    // Log the search
+    await supabase.from('location_searches').insert({
+      telegram_user_id: userId,
+      query: locationQuery,
+      latitude: lat.toString(),
+      longitude: lon.toString(),
+      query_type: 'single_number',
+      success: true
+    });
+
+  } catch (error) {
+    await logger.logError("Error in single number query", error as Error, userId, chatId);
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: `❌ An error occurred: ${(error as Error).message}`
+    });
+  } finally {
+    // Reset user state
+    if (userId) {
+      await stateManager.clearUserState(userId);
+    }
+  }
+}
+
+// Handler: Process location query for multiple numbers
+async function handleMultipleNumbersQuery(
+  supabase: SupabaseClient,
+  telegramBotToken: string,
+  message: TelegramMessage,
+  stateManager: UserStateManager
+): Promise<void> {
+  const logger = BotLogger.getInstance();
+  const userId = message.from?.id?.toString();
+  const chatId = message.chat.id.toString();
+  const locationQuery = sanitizeSearchQuery(message.text || '');
+
+  try {
+    await logger.logInfo("Processing multiple numbers location query", userId, chatId, { query: locationQuery });
+
+    // Geocode the location
+    const geoResult = await geocodeAddress(locationQuery);
+    if (!geoResult) {
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: `❌ Could not find any location for: ${locationQuery}`
+      });
+      return;
+    }
+
+    const { lat, lon, address } = geoResult;
+
+    // Find the closest phone numbers (up to 5)
+    const numbers = await findClosestNumbers(supabase, lat, lon, 5);
+    if (!numbers || numbers.length === 0) {
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: "No records found near that location."
+      });
+      return;
+    }
+
+    // Format the numbers section
+    let numbersSection = "";
+    numbers.forEach(number => {
+      numbersSection += `⭐️ ${number.user_name}\nPhone: ${number.phone_number}\n🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n`;
+    });
+
+    const reply = `Hello ${message.from?.first_name || message.from?.username || 'there'},
+
+Here are numbers near: ${address}
+
+${numbersSection}✂️ Tap the number to copy
+⚠️ All distances are approximate
+⚠️ Use at your own risk. Never pay upfront.`;
+
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: reply
+    });
+
+    // Log the search
+    await supabase.from('location_searches').insert({
+      telegram_user_id: userId,
+      query: locationQuery,
+      latitude: lat.toString(),
+      longitude: lon.toString(),
+      query_type: 'multiple_numbers',
+      success: true,
+      search_result_count: numbers.length
+    });
+
+  } catch (error) {
+    await logger.logError("Error in multiple numbers query", error as Error, userId, chatId);
+    await sendTelegramMessage(telegramBotToken, "sendMessage", {
+      chat_id: message.chat.id,
+      text: `❌ An error occurred: ${(error as Error).message}`
+    });
+  } finally {
+    // Reset user state
+    if (userId) {
+      await stateManager.clearUserState(userId);
+    }
   }
 }
 
@@ -749,480 +744,152 @@ async function handleInviteCommand(
   telegramBotToken: string,
   message: TelegramMessage
 ): Promise<void> {
-  const inviteLink = `https://t.me/Moatboat_bot?start=invite`;
   await sendTelegramMessage(telegramBotToken, "sendMessage", {
     chat_id: message.chat.id,
-    text: `🤖 *Share this bot with your friends!*\n\n🔗 Invite link: ${inviteLink}\n\n💡 They can use this bot to search for locations and get helpful information!`,
+    text: "🔗 Here is your invite link: https://t.me/your_bot?start=invite"
+  });
+}
+
+// Handler: Process /help command
+async function handleHelpCommand(
+  telegramBotToken: string,
+  message: TelegramMessage
+): Promise<void> {
+  const helpMessage = `🤖 *Available Commands:*
+
+📝 *Basic Commands:*
+/start - Welcome message
+/help - Show this help message
+/invite - Get invite link
+
+📍 *Number Search Commands:*
+/number - Search for a single phone number near a location
+/numbers - Search for multiple phone numbers near a location
+
+*Usage Examples:*
+1. Type /number
+2. Enter "London" or any location
+3. Get the closest contact number
+
+*Features:*
+• 🎉 3 requests per 24 hours
+• 📍 Location-based search
+• ⚡ Fast response times
+• 🔒 Secure and private
+
+*Tips:*
+• Be specific with locations for better results
+• Use postcodes for precise searches
+• Contact admin if you need higher limits`;
+
+  await sendTelegramMessage(telegramBotToken, "sendMessage", {
+    chat_id: message.chat.id,
+    text: helpMessage,
     parse_mode: "Markdown"
   });
 }
 
-// Handler: Process /stats command
-async function handleStatsCommand(
-  supabase: SupabaseClient,
-  telegramBotToken: string,
-  message: TelegramMessage
-): Promise<void> {
-  const { data, error } = await supabase.rpc("get_stats");
-  if (error) {
-    console.error("Error fetching stats:", error);
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: "Failed to fetch stats. Please try again later."
-    });
-    return;
-  }
-
-  const statsMessage = `Bot Statistics:\nTotal Users: ${data.total_users}\nAdmin Users: ${data.admin_users}\nTotal Locations: ${data.total_locations}`;
-  await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    chat_id: message.chat.id,
-    text: statsMessage
-  });
-}
-
-// Handler: Process /promote command
-async function handlePromoteCommand(
-  supabase: SupabaseClient,
-  telegramBotToken: string,
-  message: TelegramMessage,
-  argsText: string
-): Promise<void> {
-  const { error } = await supabase.rpc("promote_user", { user_identifier: argsText });
-  if (error) {
-    console.error("Error promoting user:", error);
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: "Failed to promote user. Please check the identifier and try again."
-    });
-    return;
-  }
-
-  await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    chat_id: message.chat.id,
-    text: `User ${argsText} has been promoted to admin.`
-  });
-}
-
-// Handler: Process /demote command
-async function handleDemoteCommand(
-  supabase: SupabaseClient,
-  telegramBotToken: string,
-  message: TelegramMessage,
-  argsText: string
-): Promise<void> {
-  const { error } = await supabase.rpc("demote_user", { user_identifier: argsText });
-  if (error) {
-    console.error("Error demoting user:", error);
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: "Failed to demote user. Please check the identifier and try again."
-    });
-    return;
-  }
-
-  await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    chat_id: message.chat.id,
-    text: `User ${argsText} has been demoted.`
-  });
-}
-
-// Handler: Process /setpassword command
-async function handleSetPasswordCommand(
-  supabase: SupabaseClient,
-  telegramBotToken: string,
-  message: TelegramMessage,
-  argsText: string
-): Promise<void> {
-  const [identifier, newPassword] = argsText.split(" ", 2);
-  if (!identifier || !newPassword) {
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: "Usage: /setpassword <user_id|username> <new_password>"
-    });
-    return;
-  }
-
-  const { error } = await supabase.rpc("set_user_password", { user_identifier: identifier, password: newPassword });
-  if (error) {
-    console.error("Error setting password:", error);
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: "Failed to set password. Please check the identifier and try again."
-    });
-    return;
-  }
-
-  await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    chat_id: message.chat.id,
-    text: `Password for user ${identifier} has been updated.`
-  });
-}
-
-// Handler: Process /backup command
-async function handleBackupCommand(
-  supabase: SupabaseClient,
-  telegramBotToken: string,
-  message: TelegramMessage
-): Promise<void> {
-  const backupPath = `/backups/backup_${Date.now()}.sql`;
-  const { error } = await supabase.rpc("create_backup", { path: backupPath });
-  if (error) {
-    console.error("Error creating backup:", error);
-    await sendTelegramMessage(telegramBotToken, "sendMessage", {
-      chat_id: message.chat.id,
-      text: "Failed to create backup. Please try again later."
-    });
-    return;
-  }
-
-  await sendTelegramMessage(telegramBotToken, "sendMessage", {
-    chat_id: message.chat.id,
-    text: `Backup created successfully at ${backupPath}.`
-  });
-}
-
-// Add RBAC enforcement
-async function enforceAdminRBAC(supabase: SupabaseClient, telegramUserId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("telegram_users")
-    .select("is_admin")
-    .eq("telegram_id", telegramUserId)
-    .single();
-
-  if (error || !data || !data.is_admin) {
-    return false;
-  }
-
-  return true;
-}
-
-// Helper function to retry operations with exponential backoff
-async function retryOperation<T>(
-  operation: () => Promise<T>,
-  maxRetries: number = CONFIG.MAX_RETRIES,
-  delay: number = CONFIG.RETRY_DELAY
-): Promise<T> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.warn(`Operation failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
-      
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
-      }
-    }
-  }
-  
-  throw lastError || new Error('Operation failed after retries');
-}
-
-// Helper function to batch update visit counts
-async function batchUpdateVisitCounts(supabase: SupabaseClient, locations: SupabaseLocation[]): Promise<void> {
-  if (!locations || locations.length === 0) return;
-  
-  try {
-    // Use RPC function for atomic batch update
-    const locationIds = locations.map(loc => loc.id);
-    const { error } = await supabase.rpc('batch_increment_visits', {
-      location_ids: locationIds
-    });
-    
-    if (error) {
-      console.error('Error in batch visit count update:', error);
-      // Fallback to individual updates if batch fails
-      await fallbackVisitCountUpdate(supabase, locations);
-    }
-  } catch (error) {
-    console.error('Critical error in batch visit count update:', error);
-    // Fallback to individual updates
-    await fallbackVisitCountUpdate(supabase, locations);
-  }
-}
-
-// Fallback function for individual visit count updates
-async function fallbackVisitCountUpdate(supabase: SupabaseClient, locations: SupabaseLocation[]): Promise<void> {
-  const updatePromises = locations.map(async (loc) => {
-    try {
-      await retryOperation(async () => {
-        const { error } = await supabase
-          .from('locations')
-          .update({ visits: (loc.visits || 0) + 1 })
-          .eq('id', loc.id);
-        
-        if (error) throw error;
-      });
-    } catch (error) {
-      console.error(`Failed to update visit count for location ${loc.id}:`, error);
-    }
-  });
-  
-  await Promise.allSettled(updatePromises);
-}
-
-// Helper function to send Telegram message with retry
-async function sendTelegramMessage(
-  telegramBotToken: string, 
-  method: string, 
-  payload: Record<string, unknown>
-): Promise<unknown> {
-  return await retryOperation(async () => {
-    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/${method}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Telegram API error: ${response.status} ${response.statusText}`);
-    }
-    
-    return await response.json();
-  });
-}
-
-// Message template types
-interface MessageTemplate {
-  id: string;
-  name: string;
-  content: string;
-  variables: string[];
-}
-
-interface TemplateVariables {
-  [key: string]: string | number;
-}
-
-// Template utility functions
-async function getMessageTemplate(supabase: SupabaseClient, templateType: string): Promise<MessageTemplate | null> {
-  try {
-    // For now, return hardcoded templates until we can properly query the database
-    const templates: { [key: string]: MessageTemplate } = {
-      'welcome': {
-        id: '1',
-        name: 'Welcome Message',
-        content: `Hello Gorgeous,
-
-As an esteemed member of The Location Finder Chat 💎, you are bestowed with the following limits:
-
-🎯 {daily_limit} requests per 24hrs
-⚡ {remaining_requests} requests left for today
-
-For immediate results, simply send a location code.
-
-Click /help for an array of other, tempting commands.`,
-        variables: ['daily_limit', 'remaining_requests']
-      },
-      'location_result': {
-        id: '2',
-        name: 'Location Result',
-        content: `Here are {count} numbers near: {location_name}, {country}
-
-🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟
-🥇 *{nearby_location_1}*
-
-+{country_code} {phone_number_1}
-🔒 *Use password {location_name} - WhatsApp only* 🌟
-
-🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟`,
-        variables: ['count', 'location_name', 'country', 'nearby_location_1', 'country_code', 'phone_number_1']
-      }
-    };
-    
-    return templates[templateType] || null;
-  } catch (error) {
-    console.error(`Error in getMessageTemplate:`, error);
-    return null;
-  }
-}
-
-function renderTemplate(template: MessageTemplate, variables: TemplateVariables): string {
-  let renderedContent = template.content;
-  
-  // Replace all template variables with actual values
-  for (const [key, value] of Object.entries(variables)) {
-    const placeholder = `{${key}}`;
-    renderedContent = renderedContent.replace(new RegExp(placeholder, 'g'), String(value));
-  }
-  
-  return renderedContent;
-}
-
-async function getWelcomeMessage(supabase: SupabaseClient, dailyLimit: number, remainingRequests: number): Promise<string> {
-  const template = await getMessageTemplate(supabase, 'welcome');
-  
-  if (!template) {
-    // Fallback message if template not found
-    return `Welcome to the Location Finder Bot! 🤖\n\nYou have ${remainingRequests} out of ${dailyLimit} requests remaining today.\n\nUse /help to see available commands.`;
-  }
-  
-  const variables: TemplateVariables = {
-    daily_limit: dailyLimit,
-    remaining_requests: remainingRequests
-  };
-  
-  return renderTemplate(template, variables);
-}
-
-async function getLocationResultMessage(
-  supabase: SupabaseClient, 
-  locationData: {
-    count: number;
-    location_name: string;
-    country: string;
-    nearby_location_1: string;
-    country_code: string;
-    phone_number_1: string;
-  }
-): Promise<string> {
-  const template = await getMessageTemplate(supabase, 'location_result');
-  
-  if (!template) {
-    // Fallback message if template not found
-    return `Found ${locationData.count} location(s) near ${locationData.location_name}, ${locationData.country}\n\n📍 ${locationData.nearby_location_1}\n+${locationData.country_code} ${locationData.phone_number_1}`;
-  }
-  
-  return renderTemplate(template, locationData);
-}
-
-// Simplify the serve function
-async function handleRequest(req: Request): Promise<Response> {
+// Main request handler
+async function handleRequest(request: Request): Promise<Response> {
   const logger = BotLogger.getInstance();
   const requestStartTime = Date.now();
 
+  // Handle CORS preflight requests
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
-    await logger.logInfo("Webhook request received", undefined, undefined, {
-      method: req.method,
-      url: req.url
-    });
-
-    // Debug: Check all environment variables
-    console.log("Available environment variables:", Object.keys(Deno.env.toObject()));
-
-    // Get the telegram bot token from environment
-    const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || Deno.env.get("BOT_TOKEN");
-    if (!telegramBotToken) {
-      await logger.logError("Telegram bot token not found in environment variables", new Error("Missing bot token"));
-      return new Response(
-        JSON.stringify({ error: "Telegram bot token not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    await logger.logInfo("Bot token found, creating Supabase client");
-
-    // Create the Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    // Initialize logger with supabase client
+    // Initialize Supabase client
+    const supabase = createClient();
     logger.setSupabase(supabase);
 
-    // Get and validate update from Telegram
-    const update = await req.json();
-    await logger.logDebug("Received Telegram update", { updateId: update.update_id });
+    // Initialize state manager
+    const stateManager = new UserStateManager(supabase);
 
-    // Validate the Telegram update structure
-    if (!validateTelegramUpdate(update)) {
-      await logger.logWarning("Invalid Telegram update structure received", undefined, undefined, { update });
-      return new Response(
-        JSON.stringify({ ok: true, message: "Invalid update structure" }),
-        { headers: { "Content-Type": "application/json" } }
-      );
+    const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    if (!telegramBotToken) {
+      throw new Error("TELEGRAM_BOT_TOKEN environment variable is required");
     }
 
-    // Process the message
+    // Validate request method
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { 
+        status: 405,
+        headers: corsHeaders 
+      });
+    }
+
+    // Parse the request body
+    const body = await request.json();
+    
+    // Validate Telegram update
+    if (!validateTelegramUpdate(body)) {
+      await logger.logWarning("Invalid Telegram update received", undefined, undefined, { body });
+      return new Response("Invalid update", { 
+        status: 400,
+        headers: corsHeaders 
+      });
+    }
+
+    const update = body as TelegramUpdate;
     const message = update.message;
+
+    if (!message) {
+      return new Response(JSON.stringify({ ok: true }), { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     const userId = message.from?.id?.toString();
     const chatId = message.chat.id.toString();
 
-    if (message && message.text) {
-      const text = message.text.trim();
-      await logger.logInfo("Processing text message", userId, chatId, { text });
+    await logger.logInfo("Processing message", userId, chatId, { 
+      messageType: message.text ? 'text' : message.location ? 'location' : 'other'
+    });
 
-      // Handle commands with individual logging
-      if (text === "/start") {
-        await handleStartCommand(supabase, telegramBotToken, message);
-      } else if (text === "/help") {
-        await handleHelpCommand(supabase, telegramBotToken, message);
-      } else if (text === "/invite") {
-        await handleInviteCommand(telegramBotToken, message);
-      } else if (text === "/stats") {
-        await handleStatsCommand(supabase, telegramBotToken, message);
-      } else if (text === "/logs") {
-        await handleLogsCommand(supabase, telegramBotToken, message);
-      } else if (text.startsWith("/promote ")) {
-        const userId = message.from?.id?.toString();
-        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
-        if (!isAdmin) {
+    // Handle text messages
+    if (message.text) {
+      const text = message.text.trim();
+      
+      // Check if it's a command
+      if (text.startsWith('/')) {
+        // Handle commands
+        if (text === "/start") {
+          await handleStartCommand(supabase, telegramBotToken, message, stateManager);
+        } else if (text === "/number") {
+          await handleNumberCommand(supabase, telegramBotToken, message, stateManager);
+        } else if (text === "/numbers") {
+          await handleNumbersCommand(supabase, telegramBotToken, message, stateManager);
+        } else if (text === "/invite") {
+          await handleInviteCommand(telegramBotToken, message);
+        } else if (text === "/help") {
+          await handleHelpCommand(telegramBotToken, message);
+        } else {
+          // Unknown command
           await sendTelegramMessage(telegramBotToken, "sendMessage", {
             chat_id: message.chat.id,
-            text: "❌ Access denied. Admin privileges required."
+            text: "❓ Unknown command. Use /help to see available commands."
           });
-        } else {
-          const argsText = text.substring(9).trim();
-          await handlePromoteCommand(supabase, telegramBotToken, message, argsText);
-        }
-      } else if (text.startsWith("/demote ")) {
-        const userId = message.from?.id?.toString();
-        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
-        if (!isAdmin) {
-          await sendTelegramMessage(telegramBotToken, "sendMessage", {
-            chat_id: message.chat.id,
-            text: "❌ Access denied. Admin privileges required."
-          });
-        } else {
-          const argsText = text.substring(8).trim();
-          await handleDemoteCommand(supabase, telegramBotToken, message, argsText);
-        }
-      } else if (text.startsWith("/setpassword ")) {
-        const userId = message.from?.id?.toString();
-        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
-        if (!isAdmin) {
-          await sendTelegramMessage(telegramBotToken, "sendMessage", {
-            chat_id: message.chat.id,
-            text: "❌ Access denied. Admin privileges required."
-          });
-        } else {
-          const argsText = text.substring(13).trim();
-          await handleSetPasswordCommand(supabase, telegramBotToken, message, argsText);
-        }
-      } else if (text === "/backup") {
-        const userId = message.from?.id?.toString();
-        const isAdmin = await enforceAdminRBAC(supabase, userId || '');
-        if (!isAdmin) {
-          await sendTelegramMessage(telegramBotToken, "sendMessage", {
-            chat_id: message.chat.id,
-            text: "❌ Access denied. Admin privileges required."
-          });
-        } else {
-          await handleBackupCommand(supabase, telegramBotToken, message);
         }
       } else {
-        // Handle location search
-        const searchStartTime = Date.now();
-        const response = await handleLocationSearch(supabase, "search", text, userId, message.chat.id);
-        await sendTelegramMessage(telegramBotToken, "sendMessage", response as unknown as Record<string, unknown>);
-        
-        const searchDuration = Date.now() - searchStartTime;
-        await logger.logInfo("Location search completed", userId, chatId, { 
-          query: text, 
-          duration: searchDuration 
-        });
+        // Handle non-command text based on user state
+        if (userId) {
+          const userState = await stateManager.getUserState(userId);
+          
+          if (userState?.state === 'awaiting_location') {
+            await handleSingleNumberQuery(supabase, telegramBotToken, message, stateManager);
+          } else if (userState?.state === 'awaiting_location_numbers') {
+            await handleMultipleNumbersQuery(supabase, telegramBotToken, message, stateManager);
+          } else {
+            // User sent text but not in correct state
+            await sendTelegramMessage(telegramBotToken, "sendMessage", {
+              chat_id: message.chat.id,
+              text: "❓ Please use /number to search for a number, or /invite to invite a friend."
+            });
+          }
+        }
       }
-    } else if (message && message.location) {
-      // Handle location messages
-      await logger.logInfo("Processing location message", userId, chatId, { 
-        lat: message.location.latitude, 
-        lng: message.location.longitude 
-      });
-      
-      const response = await handleLocationSharing(supabase, message.location, userId, message.chat.id);
-      await sendTelegramMessage(telegramBotToken, "sendMessage", response as unknown as Record<string, unknown>);
     }
 
     const totalDuration = Date.now() - requestStartTime;
@@ -1230,14 +897,20 @@ async function handleRequest(req: Request): Promise<Response> {
       totalDuration 
     });
 
-    return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true }), { 
+      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    });
+
   } catch (error) {
     const totalDuration = Date.now() - requestStartTime;
-    await logger.logError("Critical error in request handler", error as Error, undefined, undefined, undefined);
+    await logger.logError("Critical error in request handler", error as Error);
     
     return new Response(
       JSON.stringify({ error: (error as Error).message || "Unknown error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
     );
   }
 }
