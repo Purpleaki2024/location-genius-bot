@@ -17,11 +17,6 @@ That's it! The script will handle everything automatically.
 npm run bot:start
 ```
 
-### Option 2: Direct script execution
-```bash
-./start-bot-simple.sh
-```
-
 That's it! The script will:
 - ✅ Check your environment variables
 - ✅ Deploy the Supabase function
@@ -86,9 +81,6 @@ npm run bot:logs
 
 # Stop the bot (delete webhook)
 npm run bot:stop
-
-# Advanced startup (with more options)
-npm run bot:start-advanced
 ```
 
 ## 🔍 Troubleshooting
@@ -200,8 +192,7 @@ Once you see "Bot Setup Complete!" your bot is ready to use. Test it by:
 If you're still having problems:
 
 1. Check the [detailed troubleshooting guide](./BOT_TROUBLESHOOTING.md)
-2. Look at the [original setup guide](./BOT_SETUP_GUIDE.md) for advanced options
-3. Check the logs: `npm run bot:logs`
-4. Verify your environment variables are correct
+2. Check the logs: `npm run bot:logs`
+3. Verify your environment variables are correct
 
-The new simplified approach should work for 99% of use cases. If you need advanced features, you can always use `npm run bot:start-advanced` instead.
+The simplified approach should work for 99% of use cases.
