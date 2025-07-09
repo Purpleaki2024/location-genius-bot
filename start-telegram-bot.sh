@@ -68,14 +68,14 @@ fi
 
 print_status "Environment variables loaded"
 
-# Check if Supabase CLI is installed
-if ! command -v supabase &> /dev/null; then
-    print_error "Supabase CLI not found!"
-    print_info "Install it with: npm install -g supabase"
+# Check if Supabase CLI is available (via npx)
+if ! npx supabase --version &> /dev/null; then
+    print_error "Supabase CLI not available!"
+    print_info "Install Node.js and npm to use npx supabase"
     exit 1
 fi
 
-print_status "Supabase CLI found"
+print_status "Supabase CLI available via npx"
 
 # Check if we're in a Supabase project
 if [ ! -f supabase/config.toml ]; then
@@ -88,7 +88,7 @@ print_status "Supabase project detected"
 
 # Deploy the Telegram webhook function
 print_info "Deploying Telegram webhook function..."
-supabase functions deploy telegram-webhook --no-verify-jwt
+npx supabase functions deploy telegram-webhook --no-verify-jwt
 
 if [ $? -eq 0 ]; then
     print_status "Webhook function deployed successfully!"
