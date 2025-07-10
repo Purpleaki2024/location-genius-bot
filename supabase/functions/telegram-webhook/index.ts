@@ -3,6 +3,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { BOT_CONFIG } from "./config.ts";
 
 // Type definitions
 interface TelegramUpdate {
@@ -45,51 +46,8 @@ interface PhoneNumberEntry {
   category?: string;
 }
 
-// Configuration
-const CONFIG = {
-  VERSION: "4.0.0",
-  USER_LIMITS: {
-    DAILY_REQUESTS: 3,
-    RATE_LIMIT_WINDOW: 24 * 60 * 60 * 1000, // 24 hours
-  },
-  COMMANDS: {
-    START: '/start',
-    NUMBER: '/number',
-    NUMBERS: '/numbers',
-    HELP: '/help',
-    INVITE: '/invite',
-  },
-  MESSAGES: {
-    WELCOME: {
-      TITLE: "Hey {firstName},\n\nWelcome to the Local Medic Directory! 🏥",
-      SUBTITLE: "Don't panic, we've got you covered.",
-      LIMITS: "As we're helping other members 24/7, we have to enforce the following limits:",
-      DAILY_LIMIT: "🎉 <b>3 requests per 24 hours</b>",
-      REQUESTS_LEFT: "⚡ <b>{requestsLeft} requests left for today</b>",
-      HOW_TO_USE: "<b>✨ How to find a local Medic:</b>\n\nUse the buttons below or type <b>/number</b> for a single medic search.\n\nClick <b>/help</b> for more commands.",
-      FOOTER: "If you need your limit raised, please ask an admin in the chat.\n\nThank you, and we hope to see you again! 🙏"
-    },
-    BUTTONS: {
-      FIND_SINGLE: "🔍 Find Single Medic",
-      FIND_MULTIPLE: "🔍 Find Multiple Medics",
-      HELP: "❓ Help",
-      INVITE: "🔗 Invite Friends",
-      BACK_TO_MENU: "🔙 Back to Menu",
-      TYPE_CUSTOM: "⌨️ Type Custom Location"
-    },
-    SEARCH: {
-      TITLE_SINGLE: "📍 Find Single Local Medic",
-      TITLE_MULTIPLE: "📍 Find Multiple Local Medics",
-      PROMPT: "Please select a location or type a custom one:",
-      TIP: "💡 Tip: You can also type any city, postal code, or address",
-      REQUESTS_LEFT: "⚡ {requestsLeft} requests left after this search"
-    },
-    EMERGENCY: {
-      WARNING: "⚠️ For emergencies, always call 999 (UK) or 911 (US)",
-      DISCLAIMER: "◆ Tap the phone numbers to copy them"
-    }
-  }
-};
+// Configuration - imported from config.ts
+const CONFIG = BOT_CONFIG;
 
 // User states for conversation flow (using Supabase for persistence)
 const userStates = new Map<number, string>();
