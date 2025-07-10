@@ -6,22 +6,11 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "./supabaseClient.ts";
-import type { 
-  TelegramUpdate, 
-  TelegramMessage, 
-  TelegramLocation,
-  SupabaseClient, 
-  SupabaseLocation, 
-  LogSearchParams,
-  SearchResult,
-  LogActivityData,
-  TelegramResponse,
-  LogStat,
-  CommandStat,
-  ErrorSummary,
+import type {
+  TelegramUpdate,
+  TelegramMessage,
+  SupabaseClient,
   UserState,
-  PhoneNumberEntry,
-  NumberSearchResult
 } from "./types.ts";
 
 // Define CORS headers
@@ -319,29 +308,29 @@ Thank you, and we hope to see you again
 
 // Geocoding function (mock implementation - replace with real geocoding service)
 async function geocodeAddress(address: string): Promise<{ lat: number; lon: number; address: string } | null> {
-  // This is a simplified mock implementation
-  // In production, you would use a real geocoding service like Google Maps, Mapbox, etc.
   try {
-    // For demo purposes, return mock coordinates based on common location names
-    const mockLocations: Record<string, { lat: number; lon: number }> = {
-      'london': { lat: 51.5074, lon: -0.1278 },
-      'new york': { lat: 40.7128, lon: -74.0060 },
-      'paris': { lat: 48.8566, lon: 2.3522 },
-      'tokyo': { lat: 35.6762, lon: 139.6503 },
-      'sydney': { lat: -33.8688, lon: 151.2093 },
-    };
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&addressdetails=1&limit=1`;
+    const response = await fetch(url);
 
-    const normalized = address.toLowerCase().trim();
-    for (const [city, coords] of Object.entries(mockLocations)) {
-      if (normalized.includes(city)) {
-        return { ...coords, address: city };
-      }
+    if (!response.ok) {
+      console.error('Failed to fetch geocoding data:', response.statusText);
+      return null;
     }
 
-    // If no match found, return London as default for demo
-    return { lat: 51.5074, lon: -0.1278, address: address };
+    const data = await response.json();
+    if (data.length === 0) {
+      console.warn('No results found for address:', address);
+      return null;
+    }
+
+    const result = data[0];
+    return {
+      lat: parseFloat(result.lat),
+      lon: parseFloat(result.lon),
+      address: result.display_name,
+    };
   } catch (error) {
-    console.error('Geocoding error:', error);
+    console.error('Error in geocoding:', error);
     return null;
   }
 }
@@ -490,7 +479,7 @@ async function handleNumberCommand(
     await logger.logInfo("Number command initiated", userId, chatId);
 
     // Check rate limit
-    const { allowed, requestsLeft } = await checkRateLimit(supabase, userId || '');
+    const { allowed } = await checkRateLimit(supabase, userId || '');
     if (!allowed) {
       await sendTelegramMessage(telegramBotToken, "sendMessage", {
         chat_id: message.chat.id,
@@ -541,7 +530,7 @@ async function handleNumbersCommand(
     await logger.logInfo("Numbers command initiated", userId, chatId);
 
     // Check rate limit
-    const { allowed, requestsLeft } = await checkRateLimit(supabase, userId || '');
+    const { allowed } = await checkRateLimit(supabase, userId || '');
     if (!allowed) {
       await sendTelegramMessage(telegramBotToken, "sendMessage", {
         chat_id: message.chat.id,
@@ -794,66 +783,58 @@ async function handleRequest(request: Request): Promise<Response> {
   const logger = BotLogger.getInstance();
   const requestStartTime = Date.now();
 
-  // Handle CORS preflight requests
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase client
     const supabase = createClient();
     logger.setSupabase(supabase);
-
-    // Initialize state manager
     const stateManager = new UserStateManager(supabase);
 
-    const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!telegramBotToken) {
       throw new Error("TELEGRAM_BOT_TOKEN environment variable is required");
     }
 
-    // Validate request method
     if (request.method !== "POST") {
-      return new Response("Method not allowed", { 
+      return new Response("Method not allowed", {
         status: 405,
-        headers: corsHeaders 
+        headers: corsHeaders,
       });
     }
 
-    // Parse the request body
     const body = await request.json();
-    
-    // Validate Telegram update
     if (!validateTelegramUpdate(body)) {
       await logger.logWarning("Invalid Telegram update received", undefined, undefined, { body });
-      return new Response("Invalid update", { 
+      return new Response("Invalid update", {
         status: 400,
-        headers: corsHeaders 
+        headers: corsHeaders,
       });
     }
 
     const update = body as TelegramUpdate;
     const message = update.message;
-
     if (!message) {
-      return new Response(JSON.stringify({ ok: true }), { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const userId = message.from?.id?.toString();
     const chatId = message.chat.id.toString();
 
-    await logger.logInfo("Processing message", userId, chatId, { 
-      messageType: message.text ? 'text' : message.location ? 'location' : 'other'
+    await logger.logInfo("Processing message", userId, chatId, {
+      messageType: message.text
+        ? "text"
+        : message.location
+        ? "location"
+        : "other",
     });
 
-    // Handle text messages
     if (message.text) {
       const text = message.text.trim();
-      
-      // Check if it's a command
-      if (text.startsWith('/')) {
+      if (text.startsWith("/")) {
         // Handle commands
         if (text === "/start") {
           await handleStartCommand(supabase, telegramBotToken, message, stateManager);
@@ -892,26 +873,16 @@ async function handleRequest(request: Request): Promise<Response> {
       }
     }
 
-    const totalDuration = Date.now() - requestStartTime;
-    await logger.logInfo("Request completed successfully", userId, chatId, { 
-      totalDuration 
+    await logger.logInfo("Request completed successfully", userId, chatId);
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
-    return new Response(JSON.stringify({ ok: true }), { 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
-    });
-
   } catch (error) {
-    const totalDuration = Date.now() - requestStartTime;
     await logger.logError("Critical error in request handler", error as Error);
-    
-    return new Response(
-      JSON.stringify({ error: (error as Error).message || "Unknown error" }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
+    return new Response(JSON.stringify({ error: (error as Error).message || "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 }
 
