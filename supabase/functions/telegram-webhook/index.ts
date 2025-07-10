@@ -517,7 +517,7 @@ async function getLocationKeyboard(regionCode: string) {
           { text: CONFIG.MESSAGES.BUTTONS.TYPE_CUSTOM, callback_data: "location_custom" }
         ]);
         keyboard.push([
-          { text: "🔙 Back to Regions", callback_data: "show_regions" },
+          { text: "🔙 Back to Regions", callback_data: "show_countries" },
           { text: CONFIG.MESSAGES.BUTTONS.BACK_TO_MENU, callback_data: "action_start" }
         ]);
         
