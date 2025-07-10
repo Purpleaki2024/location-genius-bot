@@ -457,14 +457,14 @@ async function handleNumberSearch(botToken: string, chatId: number, userId: numb
     return;
   }
 
-  const searchType = isMultiple ? "Multiple Local Medics" : "Single Local Medic";
-  const message = `📍 <b>Find ${searchType}</b>
+  const searchTitle = isMultiple ? CONFIG.MESSAGES.SEARCH.TITLE_MULTIPLE : CONFIG.MESSAGES.SEARCH.TITLE_SINGLE;
+  const message = `${searchTitle}
 
-Please select a location or type a custom one:
+${CONFIG.MESSAGES.SEARCH.PROMPT}
 
-<i>💡 Tip: You can also type any city, postal code, or address</i>
+<i>${CONFIG.MESSAGES.SEARCH.TIP}</i>
 
-⚡ <b>${requestsLeft - 1} requests left after this search</b>`;
+${CONFIG.MESSAGES.SEARCH.REQUESTS_LEFT.replace('{requestsLeft}', (requestsLeft - 1).toString())}`;
 
   // Create keyboard with search type embedded
   const keyboard = JSON.parse(JSON.stringify(getLocationPromptKeyboard()));
