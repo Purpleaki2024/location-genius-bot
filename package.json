@@ -14,9 +14,9 @@
     "bot:cleanup": "./cleanup-python-bot.sh",
     "bot:quick-fix": "cat QUICK_FIX_SQL.sql",
     "bot:add-data": "node add-sample-data.mjs",
-    "bot:logs": "npx supabase functions logs telegram-webhook",
-    "bot:stop": "curl -X POST \"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook\"",
-    "bot:status": "curl -s \"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo\" | jq ."
+    "bot:logs": "echo '📊 Function logs are available in your Supabase Dashboard:' && echo 'https://supabase.com/dashboard/project/clyhambeojuiuogdtyog/functions/telegram-webhook' && echo '' && echo '🔧 Alternative: Check function status and recent webhook calls:' && npm run bot:status",
+    "bot:stop": "bash -c 'source .env && curl -X POST \"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/deleteWebhook\"'",
+    "bot:status": "bash -c 'source .env && curl -s \"https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo\" | jq .'"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
