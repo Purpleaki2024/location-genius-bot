@@ -13,6 +13,9 @@ import type {
   UserState,
 } from "./types.ts";
 
+// Add Node.js type definitions
+// Added @types/node to recognize process object
+
 // Define CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -658,7 +661,7 @@ Here is 1 number near: ${address}
 
 // Handler: Process location query for multiple numbers
 async function handleMultipleNumbersQuery(
-  supabase: SupabaseClient,
+  supabase: Supabase Client,
   telegramBotToken: string,
   message: TelegramMessage,
   stateManager: UserStateManager
@@ -787,32 +790,31 @@ async function handleHelpCommand(
   });
 }
 
-// Main request handler
+// Refactor handleRequest to reduce cognitive complexity
 async function handleRequest(request: Request): Promise<Response> {
   const logger = BotLogger.getInstance();
-  const requestStartTime = Date.now();
 
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  if (request.method !== "POST") {
+    return new Response("Method not allowed", {
+      status: 405,
+      headers: corsHeaders,
+    });
+  }
+
+  const supabase = createClient();
+  logger.setSupabase(supabase);
+  const stateManager = new UserStateManager(supabase);
+
+  const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!telegramBotToken) {
+    throw new Error("TELEGRAM_BOT_TOKEN environment variable is required");
+  }
+
   try {
-    const supabase = createClient();
-    logger.setSupabase(supabase);
-    const stateManager = new UserStateManager(supabase);
-
-    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!telegramBotToken) {
-      throw new Error("TELEGRAM_BOT_TOKEN environment variable is required");
-    }
-
-    if (request.method !== "POST") {
-      return new Response("Method not allowed", {
-        status: 405,
-        headers: corsHeaders,
-      });
-    }
-
     const body = await request.json();
     if (!validateTelegramUpdate(body)) {
       await logger.logWarning("Invalid Telegram update received", undefined, undefined, { body });
@@ -830,59 +832,8 @@ async function handleRequest(request: Request): Promise<Response> {
       });
     }
 
-    const userId = message.from?.id?.toString();
-    const chatId = message.chat.id.toString();
+    await processMessage(message, supabase, telegramBotToken, stateManager, logger);
 
-    await logger.logInfo("Processing message", userId, chatId, {
-      messageType: message.text
-        ? "text"
-        : message.location
-        ? "location"
-        : "other",
-    });
-
-    if (message.text) {
-      const text = message.text.trim();
-      if (text.startsWith("/")) {
-        // Handle commands
-        if (text === "/start") {
-          await handleStartCommand(supabase, telegramBotToken, message, stateManager);
-        } else if (text === "/number") {
-          await handleNumberCommand(supabase, telegramBotToken, message, stateManager);
-        } else if (text === "/numbers") {
-          await handleNumbersCommand(supabase, telegramBotToken, message, stateManager);
-        } else if (text === "/invite") {
-          await handleInviteCommand(telegramBotToken, message);
-        } else if (text === "/help") {
-          await handleHelpCommand(telegramBotToken, message);
-        } else {
-          // Unknown command
-          await sendTelegramMessage(telegramBotToken, "sendMessage", {
-            chat_id: message.chat.id,
-            text: "❓ Unknown command. Use /help to see available commands."
-          });
-        }
-      } else {
-        // Handle non-command text based on user state
-        if (userId) {
-          const userState = await stateManager.getUserState(userId);
-          
-          if (userState?.state === 'awaiting_location') {
-            await handleSingleNumberQuery(supabase, telegramBotToken, message, stateManager);
-          } else if (userState?.state === 'awaiting_location_numbers') {
-            await handleMultipleNumbersQuery(supabase, telegramBotToken, message, stateManager);
-          } else {
-            // User sent text but not in correct state
-            await sendTelegramMessage(telegramBotToken, "sendMessage", {
-              chat_id: message.chat.id,
-              text: "❓ Please use /number to search for a number, or /invite to invite a friend."
-            });
-          }
-        }
-      }
-    }
-
-    await logger.logInfo("Request completed successfully", userId, chatId);
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -892,6 +843,95 @@ async function handleRequest(request: Request): Promise<Response> {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  }
+}
+
+// Extracted function to process messages
+async function processMessage(
+  message: TelegramMessage,
+  supabase: SupabaseClient,
+  telegramBotToken: string,
+  stateManager: UserStateManager,
+  logger: BotLogger
+): Promise<void> {
+  const userId = message.from?.id?.toString();
+  const chatId = message.chat.id.toString();
+
+  // Refactor nested ternary operation
+  const messageType = message.text
+    ? "text"
+    : message.location
+    ? "location"
+    : "other";
+
+  await logger.logInfo("Processing message", userId, chatId, { messageType });
+
+  if (message.text) {
+    const text = message.text.trim();
+    if (text.startsWith("/")) {
+      await handleCommand(text, supabase, telegramBotToken, message, stateManager, logger);
+    } else if (userId) {
+      await handleUserState(userId, message, supabase, telegramBotToken, stateManager, logger);
+    }
+  }
+}
+
+// Extracted function to handle commands
+async function handleCommand(
+  text: string,
+  supabase: SupabaseClient,
+  telegramBotToken: string,
+  message: TelegramMessage,
+  stateManager: UserStateManager,
+  logger: BotLogger
+): Promise<void> {
+  const chatId = message.chat.id.toString();
+
+  switch (text) {
+    case "/start":
+      await handleStartCommand(supabase, telegramBotToken, message, stateManager);
+      break;
+    case "/number":
+      await handleNumberCommand(supabase, telegramBotToken, message, stateManager);
+      break;
+    case "/numbers":
+      await handleNumbersCommand(supabase, telegramBotToken, message, stateManager);
+      break;
+    case "/invite":
+      await handleInviteCommand(telegramBotToken, message);
+      break;
+    case "/help":
+      await handleHelpCommand(telegramBotToken, message);
+      break;
+    default:
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: chatId,
+        text: "❓ Unknown command. Use /help to see available commands.",
+      });
+  }
+}
+
+// Extracted function to handle user state
+async function handleUserState(
+  userId: string,
+  message: TelegramMessage,
+  supabase: SupabaseClient,
+  telegramBotToken: string,
+  stateManager: UserStateManager,
+  logger: BotLogger
+): Promise<void> {
+  if (userId) {
+    const userState = await stateManager.getUserState(userId);
+    if (userState?.state === "awaiting_location") {
+      await handleSingleNumberQuery(supabase, telegramBotToken, message, stateManager);
+    } else if (userState?.state === "awaiting_location_numbers") {
+      await handleMultipleNumbersQuery(supabase, telegramBotToken, message, stateManager);
+    } else {
+      await sendTelegramMessage(telegramBotToken, "sendMessage", {
+        chat_id: message.chat.id,
+        text: "❓ Please use /number to search for a number, or /invite to invite a friend.",
+      });
+    }
   }
 }
 
