@@ -335,6 +335,15 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lon: numb
   }
 }
 
+// Add missing type definition for NumberSearchResult
+interface NumberSearchResult {
+  phone_number: string;
+  user_name: string;
+  latitude: number;
+  longitude: number;
+  distance_km?: number;
+}
+
 // Find closest phone numbers in database
 async function findClosestNumbers(
   supabase: SupabaseClient, 
