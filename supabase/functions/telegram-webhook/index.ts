@@ -338,12 +338,12 @@ function getMainMenuKeyboard() {
   return {
     inline_keyboard: [
       [
-        { text: "🔍 Find Single Medic", callback_data: "action_number" },
-        { text: "🔍 Find Multiple Medics", callback_data: "action_numbers" }
+        { text: CONFIG.MESSAGES.BUTTONS.FIND_SINGLE, callback_data: "action_number" },
+        { text: CONFIG.MESSAGES.BUTTONS.FIND_MULTIPLE, callback_data: "action_numbers" }
       ],
       [
-        { text: "❓ Help", callback_data: "action_help" },
-        { text: "🔗 Invite Friends", callback_data: "action_invite" }
+        { text: CONFIG.MESSAGES.BUTTONS.HELP, callback_data: "action_help" },
+        { text: CONFIG.MESSAGES.BUTTONS.INVITE, callback_data: "action_invite" }
       ]
     ]
   };
@@ -361,10 +361,10 @@ function getLocationPromptKeyboard() {
         { text: "📍 New York", callback_data: "location_new york" }
       ],
       [
-        { text: "⌨️ Type Custom Location", callback_data: "location_custom" }
+        { text: CONFIG.MESSAGES.BUTTONS.TYPE_CUSTOM, callback_data: "location_custom" }
       ],
       [
-        { text: "🔙 Back to Menu", callback_data: "action_start" }
+        { text: CONFIG.MESSAGES.BUTTONS.BACK_TO_MENU, callback_data: "action_start" }
       ]
     ]
   };
@@ -372,26 +372,19 @@ function getLocationPromptKeyboard() {
 
 // Message templates
 function getWelcomeMessage(firstName: string, requestsLeft: number): string {
-  return `Hey ${firstName},
+  const welcome = CONFIG.MESSAGES.WELCOME;
+  return `${welcome.TITLE.replace('{firstName}', firstName)}
 
-Welcome to the Local Medic Directory! 🏥
+${welcome.SUBTITLE}
 
-Don't panic, we've got you covered.
+${welcome.LIMITS}
 
-As we're helping other members 24/7, we have to enforce the following limits:
+${welcome.DAILY_LIMIT}
+${welcome.REQUESTS_LEFT.replace('{requestsLeft}', requestsLeft.toString())}
 
-🎉 <b>3 requests per 24 hours</b>
-⚡ <b>${requestsLeft} requests left for today</b>
+${welcome.HOW_TO_USE}
 
-<b>✨ How to find a local Medic:</b>
-
-Use the buttons below or type <b>/number</b> for a single medic search.
-
-Click <b>/help</b> for more commands.
-
-If you need your limit raised, please ask an admin in the chat.
-
-Thank you, and we hope to see you again! 🙏`;
+${welcome.FOOTER}`;
 }
 
 // Command handlers
