@@ -341,16 +341,16 @@ function getMainMenuKeyboard() {
   };
 }
 
-function getLocationPromptKeyboard() {
+function getCountrySelectionKeyboard() {
   return {
     inline_keyboard: [
       [
-        { text: "📍 London", callback_data: "location_london" },
-        { text: "📍 Manchester", callback_data: "location_manchester" }
+        { text: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England", callback_data: "country_england" },
+        { text: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland", callback_data: "country_scotland" }
       ],
       [
-        { text: "📍 Birmingham", callback_data: "location_birmingham" },
-        { text: "📍 New York", callback_data: "location_new york" }
+        { text: "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales", callback_data: "country_wales" },
+        { text: "🇮🇪 Ireland", callback_data: "country_ireland" }
       ],
       [
         { text: CONFIG.MESSAGES.BUTTONS.TYPE_CUSTOM, callback_data: "location_custom" }
@@ -360,6 +360,155 @@ function getLocationPromptKeyboard() {
       ]
     ]
   };
+}
+
+async function getRegionalKeyboard(countryCode: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    // Fallback to config-based regions
+    const countryData = CONFIG.REGIONS[countryCode];
+    if (!countryData) return getCountrySelectionKeyboard();
+    
+    const keyboard: any[][] = [];
+    for (let i = 0; i < countryData.regions.length; i += 2) {
+      const row = [
+        { text: countryData.regions[i].text, callback_data: `region_${countryData.regions[i].value}` }
+      ];
+      if (i + 1 < countryData.regions.length) {
+        row.push({ text: countryData.regions[i + 1].text, callback_data: `region_${countryData.regions[i + 1].value}` });
+      }
+      keyboard.push(row);
+    }
+    
+    keyboard.push([
+      { text: CONFIG.MESSAGES.BUTTONS.TYPE_CUSTOM, callback_data: "location_custom" }
+    ]);
+    keyboard.push([
+      { text: "🔙 Back to Countries", callback_data: "show_countries" },
+      { text: CONFIG.MESSAGES.BUTTONS.BACK_TO_MENU, callback_data: "action_start" }
+    ]);
+    
+    return { inline_keyboard: keyboard };
+  }
+
+  try {
+    const { data: regions, error } = await supabase
+      .from('regions')
+      .select('*')
+      .eq('country_code', countryCode)
+      .eq('is_active', true)
+      .order('display_order');
+
+    if (error || !regions || regions.length === 0) {
+      log('ERROR', 'Failed to fetch regions', { error: error?.message, countryCode });
+      return getCountrySelectionKeyboard();
+    }
+
+    const keyboard: any[][] = [];
+    for (let i = 0; i < regions.length; i += 2) {
+      const row = [
+        { text: `${regions[i].emoji} ${regions[i].region_name}`, callback_data: `region_${regions[i].region_code}` }
+      ];
+      if (i + 1 < regions.length) {
+        row.push({ text: `${regions[i + 1].emoji} ${regions[i + 1].region_name}`, callback_data: `region_${regions[i + 1].region_code}` });
+      }
+      keyboard.push(row);
+    }
+    
+    keyboard.push([
+      { text: CONFIG.MESSAGES.BUTTONS.TYPE_CUSTOM, callback_data: "location_custom" }
+    ]);
+    keyboard.push([
+      { text: "🔙 Back to Countries", callback_data: "show_countries" },
+      { text: CONFIG.MESSAGES.BUTTONS.BACK_TO_MENU, callback_data: "action_start" }
+    ]);
+    
+    return { inline_keyboard: keyboard };
+  } catch (error: any) {
+    log('ERROR', 'Exception in getRegionalKeyboard', { error: error.message, countryCode });
+    return getCountrySelectionKeyboard();
+  }
+}
+
+async function getLocationKeyboard(regionCode: string) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    // Fallback to config-based locations
+    for (const country of Object.values(CONFIG.REGIONS)) {
+      const region = country.regions.find(r => r.value === regionCode);
+      if (region && region.cities) {
+        const keyboard: any[][] = [];
+        for (let i = 0; i < region.cities.length; i += 2) {
+          const row = [
+            { text: `📍 ${region.cities[i]}`, callback_data: `location_${region.cities[i].toLowerCase().replace(/\s+/g, '_')}` }
+          ];
+          if (i + 1 < region.cities.length) {
+            row.push({ text: `📍 ${region.cities[i + 1]}`, callback_data: `location_${region.cities[i + 1].toLowerCase().replace(/\s+/g, '_')}` });
+          }
+          keyboard.push(row);
+        }
+        
+        keyboard.push([
+          { text: CONFIG.MESSAGES.BUTTONS.TYPE_CUSTOM, callback_data: "location_custom" }
+        ]);
+        keyboard.push([
+          { text: "🔙 Back to Regions", callback_data: "show_regions" },
+          { text: CONFIG.MESSAGES.BUTTONS.BACK_TO_MENU, callback_data: "action_start" }
+        ]);
+        
+        return { inline_keyboard: keyboard };
+      }
+    }
+    return getCountrySelectionKeyboard();
+  }
+
+  try {
+    const { data: locations, error } = await supabase
+      .from('region_locations')
+      .select(`
+        *,
+        regions!inner (
+          region_code
+        )
+      `)
+      .eq('regions.region_code', regionCode)
+      .eq('is_active', true)
+      .order('display_order');
+
+    if (error || !locations || locations.length === 0) {
+      log('ERROR', 'Failed to fetch locations', { error: error?.message, regionCode });
+      return getCountrySelectionKeyboard();
+    }
+
+    const keyboard: any[][] = [];
+    for (let i = 0; i < locations.length; i += 2) {
+      const row = [
+        { text: `📍 ${locations[i].location_name}`, callback_data: `location_${locations[i].location_code}` }
+      ];
+      if (i + 1 < locations.length) {
+        row.push({ text: `📍 ${locations[i + 1].location_name}`, callback_data: `location_${locations[i + 1].location_code}` });
+      }
+      keyboard.push(row);
+    }
+    
+    keyboard.push([
+      { text: CONFIG.MESSAGES.BUTTONS.TYPE_CUSTOM, callback_data: "location_custom" }
+    ]);
+    keyboard.push([
+      { text: "🔙 Back to Regions", callback_data: "show_regions" },
+      { text: CONFIG.MESSAGES.BUTTONS.BACK_TO_MENU, callback_data: "action_start" }
+    ]);
+    
+    return { inline_keyboard: keyboard };
+  } catch (error: any) {
+    log('ERROR', 'Exception in getLocationKeyboard', { error: error.message, regionCode });
+    return getCountrySelectionKeyboard();
+  }
+}
+
+function getLocationPromptKeyboard() {
+  // This function is now replaced by getCountrySelectionKeyboard()
+  return getCountrySelectionKeyboard();
 }
 
 // Message templates
@@ -549,19 +698,37 @@ async function handleCallbackQuery(botToken: string, callbackQuery: any) {
     await handleNumberSearch(botToken, chatId, userId, false);
   } else if (data === 'action_numbers') {
     await handleNumberSearch(botToken, chatId, userId, true);
+  } else if (data === 'show_countries') {
+    const keyboard = getCountrySelectionKeyboard();
+    await sendMessage(botToken, chatId, 
+      `${CONFIG.MESSAGES.SEARCH.TITLE_SINGLE}\n\n${CONFIG.MESSAGES.SEARCH.PROMPT}\n\n${CONFIG.MESSAGES.SEARCH.TIP}`,
+      { reply_markup: keyboard });
+  } else if (data.startsWith('country_')) {
+    const countryCode = data.replace('country_', '');
+    const keyboard = await getRegionalKeyboard(countryCode);
+    const countryName = CONFIG.REGIONS[countryCode]?.name || countryCode;
+    await sendMessage(botToken, chatId, 
+      `🗺️ <b>Select a region in ${countryName}</b>\n\nChoose your region or type a custom location:`,
+      { reply_markup: keyboard });
+  } else if (data.startsWith('region_')) {
+    const regionCode = data.replace('region_', '');
+    const keyboard = await getLocationKeyboard(regionCode);
+    await sendMessage(botToken, chatId, 
+      `📍 <b>Select a location</b>\n\nChoose your city/town or type a custom location:`,
+      { reply_markup: keyboard });
   } else if (data.startsWith('location_')) {
     const parts = data.split('_');
-    if (parts.length >= 3) {
-      const location = parts.slice(1, -1).join('_');
-      const isMultiple = parts[parts.length - 1] === 'multiple';
+    if (parts.length >= 2) {
+      let location = parts.slice(1).join('_');
       
       if (location === 'custom') {
-        const searchType = isMultiple ? "multiple medics" : "a single medic";
         await sendMessage(botToken, chatId, 
-          `📍 <b>Custom Location Search</b>\n\nPlease type your location to find ${searchType}:\n\n<i>Example: SW1A 1AA, Paris France, etc.</i>`,
+          `📍 <b>Custom Location Search</b>\n\nPlease type your location to find a medic:\n\n<i>Example: SW1A 1AA, Paris France, etc.</i>`,
           { reply_markup: getMainMenuKeyboard() });
       } else {
-        await handleLocationSearch(botToken, chatId, userId, location, isMultiple);
+        // Convert location code back to readable name
+        location = location.replace(/_/g, ' ');
+        await handleLocationSearch(botToken, chatId, userId, location, false);
       }
     }
   }
