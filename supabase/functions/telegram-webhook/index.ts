@@ -51,17 +51,105 @@ const CONFIG = {
   }
 };
 
-// User states for conversation flow
+// User states for conversation flow (using Supabase for persistence)
 const userStates = new Map<number, string>();
 
 // Rate limiting storage
 const userRequests = new Map<number, { count: number; lastReset: number }>();
+
+// Supabase client for state management
+let supabaseClient: any = null;
+
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (supabaseUrl && supabaseKey) {
+      supabaseClient = createClient(supabaseUrl, supabaseKey);
+    }
+  }
+  return supabaseClient;
+}
 
 // CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// State management functions (fallback to in-memory if DB fails)
+async function getUserState(userId: number): Promise<string | null> {
+  // First try in-memory state
+  if (userStates.has(userId)) {
+    return userStates.get(userId) || null;
+  }
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from('user_states')
+      .select('state')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      log('ERROR', 'Failed to get user state', { error: error.message, userId });
+      return null;
+    }
+    
+    return data?.state || null;
+  } catch (error) {
+    log('ERROR', 'Exception in getUserState', { error: error.message, userId });
+    return null;
+  }
+}
+
+async function setUserState(userId: number, state: string): Promise<void> {
+  // Always set in-memory state as fallback
+  userStates.set(userId, state);
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  
+  try {
+    const { error } = await supabase
+      .from('user_states')
+      .upsert({
+        user_id: userId,
+        state: state,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) {
+      log('ERROR', 'Failed to set user state', { error: error.message, userId, state });
+    }
+  } catch (error) {
+    log('ERROR', 'Exception in setUserState', { error: error.message, userId, state });
+  }
+}
+
+async function clearUserState(userId: number): Promise<void> {
+  // Always clear in-memory state
+  userStates.delete(userId);
+  
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  
+  try {
+    const { error } = await supabase
+      .from('user_states')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (error) {
+      log('ERROR', 'Failed to clear user state', { error: error.message, userId });
+    }
+  } catch (error) {
+    log('ERROR', 'Exception in clearUserState', { error: error.message, userId });
+  }
+}
 
 // Utility functions
 function log(level: string, message: string, data?: any) {
@@ -270,7 +358,7 @@ async function handleNumber(botToken: string, chatId: number, userId: number) {
     return;
   }
 
-  userStates.set(userId, 'waiting_for_location_single');
+  await setUserState(userId, 'waiting_for_location_single');
   await sendMessage(botToken, chatId, 
     `📍 <b>Find a Local Medic</b>\n\nPlease enter your location (city, postal code, or address):\n\n<i>Example: London, Manchester, SW1A 1AA</i>\n\n⚡ <b>${requestsLeft - 1} requests left after this</b>`);
 }
@@ -284,7 +372,7 @@ async function handleNumbers(botToken: string, chatId: number, userId: number) {
     return;
   }
 
-  userStates.set(userId, 'waiting_for_location_multiple');
+  await setUserState(userId, 'waiting_for_location_multiple');
   await sendMessage(botToken, chatId, 
     `📍 <b>Find Multiple Local Medics</b>\n\nPlease enter your location (city, postal code, or address):\n\n<i>Example: London, Manchester, SW1A 1AA</i>\n\n⚡ <b>${requestsLeft - 1} requests left after this</b>`);
 }
@@ -328,13 +416,13 @@ async function handleLocationQuery(botToken: string, chatId: number, userId: num
     await sendMessage(botToken, chatId, message);
 
     // Clear user state
-    userStates.delete(userId);
+    await clearUserState(userId);
     
   } catch (error) {
     log('ERROR', 'Failed to handle location query', { error: error.message, query });
     await sendMessage(botToken, chatId, 
       `❌ <b>Search failed</b>\n\nSorry, there was an error processing your request. Please try again or contact an admin.`);
-    userStates.delete(userId);
+    await clearUserState(userId);
   }
 }
 
@@ -372,7 +460,7 @@ async function handleRequest(request: Request): Promise<Response> {
     log('INFO', 'Processing message', { userId, chatId, text: text.substring(0, 50) });
 
     // Check if user is in a conversation state
-    const userState = userStates.get(userId);
+    const userState = await getUserState(userId);
     
     if (userState === 'waiting_for_location_single') {
       await handleLocationQuery(botToken, chatId, userId, text, false);
