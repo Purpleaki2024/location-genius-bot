@@ -58,6 +58,36 @@ const CONFIG = {
     NUMBERS: '/numbers',
     HELP: '/help',
     INVITE: '/invite',
+  },
+  MESSAGES: {
+    WELCOME: {
+      TITLE: "Hey {firstName},\n\nWelcome to the Local Medic Directory! 🏥",
+      SUBTITLE: "Don't panic, we've got you covered.",
+      LIMITS: "As we're helping other members 24/7, we have to enforce the following limits:",
+      DAILY_LIMIT: "🎉 <b>3 requests per 24 hours</b>",
+      REQUESTS_LEFT: "⚡ <b>{requestsLeft} requests left for today</b>",
+      HOW_TO_USE: "<b>✨ How to find a local Medic:</b>\n\nUse the buttons below or type <b>/number</b> for a single medic search.\n\nClick <b>/help</b> for more commands.",
+      FOOTER: "If you need your limit raised, please ask an admin in the chat.\n\nThank you, and we hope to see you again! 🙏"
+    },
+    BUTTONS: {
+      FIND_SINGLE: "🔍 Find Single Medic",
+      FIND_MULTIPLE: "🔍 Find Multiple Medics",
+      HELP: "❓ Help",
+      INVITE: "🔗 Invite Friends",
+      BACK_TO_MENU: "🔙 Back to Menu",
+      TYPE_CUSTOM: "⌨️ Type Custom Location"
+    },
+    SEARCH: {
+      TITLE_SINGLE: "📍 Find Single Local Medic",
+      TITLE_MULTIPLE: "📍 Find Multiple Local Medics",
+      PROMPT: "Please select a location or type a custom one:",
+      TIP: "💡 Tip: You can also type any city, postal code, or address",
+      REQUESTS_LEFT: "⚡ {requestsLeft} requests left after this search"
+    },
+    EMERGENCY: {
+      WARNING: "⚠️ For emergencies, always call 999 (UK) or 911 (US)",
+      DISCLAIMER: "◆ Tap the phone numbers to copy them"
+    }
   }
 };
 
@@ -274,11 +304,33 @@ function getNearbyNumbers(lat: number, lon: number, count: number = 1): PhoneNum
     { phone: '+44 7700 900789', name: 'Dr. Emma Wilson', latitude: 51.5074, longitude: -0.1278, city: 'London', country: 'UK', category: 'Cardiology' },
     { phone: '+44 7700 900321', name: 'Dr. James Brown', latitude: 53.4808, longitude: -2.2426, city: 'Manchester', country: 'UK', category: 'Pediatrics' },
     { phone: '+44 7700 900654', name: 'Dr. Lisa Davis', latitude: 53.4808, longitude: -2.2426, city: 'Manchester', country: 'UK', category: 'Dermatology' },
+    { phone: '+44 7700 900987', name: 'Dr. Tom Wilson', latitude: 52.4862, longitude: -1.8904, city: 'Birmingham', country: 'UK', category: 'General Practice' },
+    { phone: '+44 7700 900111', name: 'Dr. Kate Brown', latitude: 52.4862, longitude: -1.8904, city: 'Birmingham', country: 'UK', category: 'Cardiology' },
     { phone: '+1 555 123 4567', name: 'Dr. Alex Wilson', latitude: 40.7128, longitude: -74.0060, city: 'New York', country: 'USA', category: 'Emergency Medicine' },
     { phone: '+1 555 987 6543', name: 'Dr. Maria Garcia', latitude: 40.7128, longitude: -74.0060, city: 'New York', country: 'USA', category: 'Internal Medicine' },
+    { phone: '+1 555 456 7890', name: 'Dr. Robert Johnson', latitude: 40.7128, longitude: -74.0060, city: 'New York', country: 'USA', category: 'Pediatrics' },
   ];
 
-  return sampleNumbers.slice(0, count);
+  // Calculate distance between two points using Haversine formula
+  function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  // Sort by distance from the requested location
+  const numbersWithDistance = sampleNumbers.map(entry => ({
+    ...entry,
+    distance: calculateDistance(lat, lon, entry.latitude, entry.longitude)
+  })).sort((a, b) => a.distance - b.distance);
+
+  // Return the closest entries
+  return numbersWithDistance.slice(0, count);
 }
 
 // UI Helper functions
