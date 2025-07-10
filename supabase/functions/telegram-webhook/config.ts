@@ -98,13 +98,52 @@ export const BOT_CONFIG = {
     }
   },
   
-  // Location preset buttons (can be customized)
-  LOCATION_PRESETS: [
-    { text: "📍 London", value: "london" },
-    { text: "📍 Manchester", value: "manchester" },
-    { text: "📍 Birmingham", value: "birmingham" },
-    { text: "📍 New York", value: "new york" }
-  ],
+  // Regional structure for UK, Scotland, Wales, and Ireland
+  REGIONS: {
+    england: {
+      name: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England",
+      regions: [
+        { text: "🏔️ North East", value: "north_east", cities: ["Newcastle", "Sunderland", "Middlesbrough", "Durham"] },
+        { text: "🌊 North West", value: "north_west", cities: ["Manchester", "Liverpool", "Preston", "Blackpool", "Lancaster"] },
+        { text: "🚂 Yorkshire and the Humber", value: "yorkshire", cities: ["Leeds", "Sheffield", "Bradford", "Hull", "York"] },
+        { text: "🌾 East Midlands", value: "east_midlands", cities: ["Nottingham", "Leicester", "Derby", "Lincoln"] },
+        { text: "🏭 West Midlands", value: "west_midlands", cities: ["Birmingham", "Coventry", "Wolverhampton", "Stoke-on-Trent"] },
+        { text: "🌻 East of England", value: "east_england", cities: ["Cambridge", "Norwich", "Ipswich", "Luton", "Peterborough"] },
+        { text: "🏛️ London", value: "london", cities: ["Central London", "North London", "South London", "East London", "West London"] },
+        { text: "🌅 South East", value: "south_east", cities: ["Brighton", "Oxford", "Canterbury", "Reading", "Guildford"] },
+        { text: "🏖️ South West", value: "south_west", cities: ["Bristol", "Plymouth", "Exeter", "Bath", "Bournemouth"] }
+      ]
+    },
+    scotland: {
+      name: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland",
+      regions: [
+        { text: "🏰 Central Scotland", value: "central_scotland", cities: ["Glasgow", "Edinburgh", "Stirling", "Falkirk"] },
+        { text: "🌊 Highlands", value: "highlands", cities: ["Inverness", "Fort William", "Ullapool"] },
+        { text: "🏔️ Southern Scotland", value: "southern_scotland", cities: ["Dumfries", "Ayr", "Stranraer"] },
+        { text: "🏝️ Islands", value: "scottish_islands", cities: ["Isle of Skye", "Orkney", "Shetland"] }
+      ]
+    },
+    wales: {
+      name: "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales",
+      regions: [
+        { text: "🏔️ North Wales", value: "north_wales", cities: ["Bangor", "Wrexham", "Llandudno", "Caernarfon"] },
+        { text: "🌊 Mid Wales", value: "mid_wales", cities: ["Aberystwyth", "Newtown", "Machynlleth"] },
+        { text: "🏭 South Wales", value: "south_wales", cities: ["Cardiff", "Swansea", "Newport", "Merthyr Tydfil"] }
+      ]
+    },
+    ireland: {
+      name: "🇮🇪 Ireland",
+      regions: [
+        { text: "🍀 Leinster", value: "leinster", cities: ["Dublin", "Kilkenny", "Wexford", "Carlow"] },
+        { text: "🎵 Munster", value: "munster", cities: ["Cork", "Limerick", "Waterford", "Tipperary"] },
+        { text: "🌊 Connacht", value: "connacht", cities: ["Galway", "Sligo", "Mayo", "Roscommon"] },
+        { text: "🏰 Ulster", value: "ulster", cities: ["Belfast", "Derry", "Armagh", "Antrim"] }
+      ]
+    }
+  },
+
+  // Location preset buttons (now organized by regions)
+  LOCATION_PRESETS: [],
   
   // Bot settings
   SETTINGS: {

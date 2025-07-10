@@ -46,6 +46,40 @@ interface PhoneNumberEntry {
   category?: string;
 }
 
+interface Region {
+  id: string;
+  country_code: string;
+  country_name: string;
+  region_code: string;
+  region_name: string;
+  emoji: string;
+  display_order: number;
+}
+
+interface RegionLocation {
+  id: string;
+  region_id: string;
+  location_name: string;
+  location_code: string;
+  latitude?: number;
+  longitude?: number;
+  display_order: number;
+}
+
+interface MedicalContact {
+  id: string;
+  region_id?: string;
+  location_id?: string;
+  name: string;
+  phone: string;
+  email?: string;
+  specialty?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  is_emergency: boolean;
+}
+
 // Configuration - imported from config.ts
 const CONFIG = BOT_CONFIG;
 
