@@ -1,28 +1,38 @@
-// Telegram Location Bot - Simple and Reliable Implementation
-// This is the main webhook handler for the Telegram bot
+// Production-Ready Telegram Location Bot
+// Stateless implementation for reliable serverless operation
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 // Type definitions
 interface TelegramUpdate {
-  message?: {
-    message_id: number;
-    from: {
-      id: number;
-      first_name: string;
-      username?: string;
-    };
-    chat: {
-      id: number;
-      type: string;
-    };
-    text: string;
-    location?: {
-      latitude: number;
-      longitude: number;
-    };
+  message?: TelegramMessage;
+  callback_query?: {
+    id: string;
+    from: TelegramUser;
+    message?: TelegramMessage;
+    data?: string;
   };
+}
+
+interface TelegramMessage {
+  message_id: number;
+  from: TelegramUser;
+  chat: TelegramChat;
+  text?: string;
+  reply_markup?: any;
+}
+
+interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+}
+
+interface TelegramChat {
+  id: number;
+  type: string;
 }
 
 interface PhoneNumberEntry {
@@ -37,7 +47,7 @@ interface PhoneNumberEntry {
 
 // Configuration
 const CONFIG = {
-  VERSION: "3.0.0",
+  VERSION: "4.0.0",
   USER_LIMITS: {
     DAILY_REQUESTS: 3,
     RATE_LIMIT_WINDOW: 24 * 60 * 60 * 1000, // 24 hours
@@ -157,12 +167,12 @@ function log(level: string, message: string, data?: any) {
   console.log(`[${timestamp}] ${level}: ${message}`, data ? JSON.stringify(data) : '');
 }
 
+// Rate limiting (simplified approach)
 function checkRateLimit(userId: number): { allowed: boolean; requestsLeft: number } {
   const now = Date.now();
   const userRequest = userRequests.get(userId);
   
   if (!userRequest || (now - userRequest.lastReset) > CONFIG.USER_LIMITS.RATE_LIMIT_WINDOW) {
-    // Reset or initialize
     userRequests.set(userId, { count: 0, lastReset: now });
     return { allowed: true, requestsLeft: CONFIG.USER_LIMITS.DAILY_REQUESTS };
   }
@@ -208,42 +218,56 @@ async function sendMessage(botToken: string, chatId: number, text: string, optio
   }
 }
 
-// Mock geocoding function (replace with real service in production)
-function geocodeLocation(query: string): { lat: number; lon: number; address: string } {
-  const locations = {
-    'london': { lat: 51.5074, lon: -0.1278, address: 'London, UK' },
-    'manchester': { lat: 53.4808, lon: -2.2426, address: 'Manchester, UK' },
-    'birmingham': { lat: 52.4862, lon: -1.8904, address: 'Birmingham, UK' },
-    'liverpool': { lat: 53.4084, lon: -2.9916, address: 'Liverpool, UK' },
-    'leeds': { lat: 53.8008, lon: -1.5491, address: 'Leeds, UK' },
-    'new york': { lat: 40.7128, lon: -74.0060, address: 'New York, NY, USA' },
-    'los angeles': { lat: 34.0522, lon: -118.2437, address: 'Los Angeles, CA, USA' },
-    'chicago': { lat: 41.8781, lon: -87.6298, address: 'Chicago, IL, USA' },
-    'paris': { lat: 48.8566, lon: 2.3522, address: 'Paris, France' },
-    'berlin': { lat: 52.5200, lon: 13.4050, address: 'Berlin, Germany' },
-  };
+async function answerCallbackQuery(botToken: string, callbackQueryId: string, text?: string) {
+  try {
+    const payload: any = { callback_query_id: callbackQueryId };
+    if (text) payload.text = text;
 
-  const normalizedQuery = query.toLowerCase().trim();
-  
-  // Exact match
-  if (locations[normalizedQuery]) {
-    return locations[normalizedQuery];
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    return await response.json();
+  } catch (error) {
+    log('ERROR', 'Failed to answer callback query', { error: error.message });
   }
-  
-  // Partial match
-  for (const [city, coords] of Object.entries(locations)) {
-    if (normalizedQuery.includes(city) || city.includes(normalizedQuery)) {
-      return coords;
+}
+
+// Real geocoding using Nominatim (OpenStreetMap)
+async function geocodeLocation(query: string): Promise<{ lat: number; lon: number; address: string } | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=1`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'LocationGeniusBot/1.0' }
+    });
+
+    if (!response.ok) {
+      log('ERROR', 'Geocoding API error', { status: response.status, query });
+      return null;
     }
+
+    const data = await response.json();
+    if (!data || data.length === 0) {
+      log('WARN', 'No geocoding results found', { query });
+      return null;
+    }
+
+    const result = data[0];
+    return {
+      lat: parseFloat(result.lat),
+      lon: parseFloat(result.lon),
+      address: result.display_name
+    };
+  } catch (error) {
+    log('ERROR', 'Geocoding failed', { error: error.message, query });
+    return null;
   }
-  
-  // Default to London
-  return locations.london;
 }
 
 // Sample data function (replace with real database query)
 function getNearbyNumbers(lat: number, lon: number, count: number = 1): PhoneNumberEntry[] {
-  // This is sample data - in production, query your database
   const sampleNumbers: PhoneNumberEntry[] = [
     { phone: '+44 7700 900123', name: 'Dr. Sarah Johnson', latitude: 51.5074, longitude: -0.1278, city: 'London', country: 'UK', category: 'Emergency Medicine' },
     { phone: '+44 7700 900456', name: 'Dr. Michael Smith', latitude: 51.5074, longitude: -0.1278, city: 'London', country: 'UK', category: 'General Practice' },
@@ -254,8 +278,44 @@ function getNearbyNumbers(lat: number, lon: number, count: number = 1): PhoneNum
     { phone: '+1 555 987 6543', name: 'Dr. Maria Garcia', latitude: 40.7128, longitude: -74.0060, city: 'New York', country: 'USA', category: 'Internal Medicine' },
   ];
 
-  // Simple distance-based filtering (in production, use proper spatial queries)
   return sampleNumbers.slice(0, count);
+}
+
+// UI Helper functions
+function getMainMenuKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: "🔍 Find Single Medic", callback_data: "action_number" },
+        { text: "🔍 Find Multiple Medics", callback_data: "action_numbers" }
+      ],
+      [
+        { text: "❓ Help", callback_data: "action_help" },
+        { text: "🔗 Invite Friends", callback_data: "action_invite" }
+      ]
+    ]
+  };
+}
+
+function getLocationPromptKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: "📍 London", callback_data: "location_london" },
+        { text: "📍 Manchester", callback_data: "location_manchester" }
+      ],
+      [
+        { text: "📍 Birmingham", callback_data: "location_birmingham" },
+        { text: "📍 New York", callback_data: "location_new york" }
+      ],
+      [
+        { text: "⌨️ Type Custom Location", callback_data: "location_custom" }
+      ],
+      [
+        { text: "🔙 Back to Menu", callback_data: "action_start" }
+      ]
+    ]
+  };
 }
 
 // Message templates
@@ -273,7 +333,7 @@ As we're helping other members 24/7, we have to enforce the following limits:
 
 <b>✨ How to find a local Medic:</b>
 
-To find a local Medic, simply click <b>/number</b>
+Use the buttons below or type <b>/number</b> for a single medic search.
 
 Click <b>/help</b> for more commands.
 
@@ -282,25 +342,31 @@ If you need your limit raised, please ask an admin in the chat.
 Thank you, and we hope to see you again! 🙏`;
 }
 
-function getHelpMessage(): string {
-  return `<b>📚 Available Commands:</b>
+// Command handlers
+async function handleStart(botToken: string, chatId: number, firstName: string, userId: number) {
+  const { requestsLeft } = checkRateLimit(userId);
+  const message = getWelcomeMessage(firstName, requestsLeft);
+  await sendMessage(botToken, chatId, message, { reply_markup: getMainMenuKeyboard() });
+}
 
-<b>/start</b> - Show welcome message
+async function handleHelp(botToken: string, chatId: number) {
+  const helpMessage = `<b>📚 Available Commands:</b>
+
+<b>/start</b> - Show welcome message and main menu
 <b>/number</b> - Find a single local medic
 <b>/numbers</b> - Find multiple local medics
 <b>/help</b> - Show this help message
 <b>/invite</b> - Get invite link for the bot
 
 <b>🔍 How to search:</b>
-1. Use /number or /numbers
-2. Enter your location when prompted
+1. Use the buttons or commands above
+2. Select or enter your location
 3. Get nearby medic contact details
 
 <b>📍 Location examples:</b>
-• London
-• Manchester
-• New York
-• Your postal code
+• London, Manchester, Birmingham
+• New York, Los Angeles, Chicago
+• Your postal code or full address
 
 <b>⚠️ Remember:</b>
 • You have 3 requests per 24 hours
@@ -308,14 +374,16 @@ function getHelpMessage(): string {
 • This bot provides contact information only
 
 Need help? Contact an admin in the main chat.`;
+
+  await sendMessage(botToken, chatId, helpMessage, { reply_markup: getMainMenuKeyboard() });
 }
 
-function getInviteMessage(): string {
-  return `<b>🤝 Invite Others to the Local Medic Directory</b>
+async function handleInvite(botToken: string, chatId: number) {
+  const inviteMessage = `<b>🤝 Invite Others to the Local Medic Directory</b>
 
 Share this bot with others who might need medical contacts:
 
-<b>Bot Link:</b> https://t.me/YourBotUsername
+<b>Bot Link:</b> https://t.me/Moatboat_bot
 
 <b>What this bot does:</b>
 • Find local medic contacts quickly
@@ -330,77 +398,77 @@ Share this bot with others who might need medical contacts:
 • Community support
 
 Help us grow the community by sharing! 🌟`;
+
+  await sendMessage(botToken, chatId, inviteMessage, { reply_markup: getMainMenuKeyboard() });
 }
 
-// Command handlers
-async function handleStart(botToken: string, chatId: number, firstName: string, userId: number) {
-  const { requestsLeft } = checkRateLimit(userId);
-  const message = getWelcomeMessage(firstName, requestsLeft);
-  await sendMessage(botToken, chatId, message);
-}
-
-async function handleHelp(botToken: string, chatId: number) {
-  const message = getHelpMessage();
-  await sendMessage(botToken, chatId, message);
-}
-
-async function handleInvite(botToken: string, chatId: number) {
-  const message = getInviteMessage();
-  await sendMessage(botToken, chatId, message);
-}
-
-async function handleNumber(botToken: string, chatId: number, userId: number) {
+async function handleNumberSearch(botToken: string, chatId: number, userId: number, isMultiple: boolean = false) {
   const { allowed, requestsLeft } = checkRateLimit(userId);
   
   if (!allowed) {
     await sendMessage(botToken, chatId, 
-      `❌ <b>Daily limit reached!</b>\n\nYou've used all your requests for today. Please try again in 24 hours or contact an admin if you need more requests.`);
+      `❌ <b>Daily limit reached!</b>\n\nYou've used all your requests for today. Please try again in 24 hours or contact an admin if you need more requests.`,
+      { reply_markup: getMainMenuKeyboard() });
     return;
   }
 
-  await setUserState(userId, 'waiting_for_location_single');
-  await sendMessage(botToken, chatId, 
-    `📍 <b>Find a Local Medic</b>\n\nPlease enter your location (city, postal code, or address):\n\n<i>Example: London, Manchester, SW1A 1AA</i>\n\n⚡ <b>${requestsLeft - 1} requests left after this</b>`);
+  const searchType = isMultiple ? "Multiple Local Medics" : "Single Local Medic";
+  const message = `📍 <b>Find ${searchType}</b>
+
+Please select a location or type a custom one:
+
+<i>💡 Tip: You can also type any city, postal code, or address</i>
+
+⚡ <b>${requestsLeft - 1} requests left after this search</b>`;
+
+  // Create keyboard with search type embedded
+  const keyboard = JSON.parse(JSON.stringify(getLocationPromptKeyboard()));
+  keyboard.inline_keyboard.forEach((row: any[]) => {
+    row.forEach((button: any) => {
+      if (button.callback_data.startsWith('location_')) {
+        button.callback_data += `_${isMultiple ? 'multiple' : 'single'}`;
+      }
+    });
+  });
+
+  await sendMessage(botToken, chatId, message, { reply_markup: keyboard });
 }
 
-async function handleNumbers(botToken: string, chatId: number, userId: number) {
-  const { allowed, requestsLeft } = checkRateLimit(userId);
-  
-  if (!allowed) {
-    await sendMessage(botToken, chatId, 
-      `❌ <b>Daily limit reached!</b>\n\nYou've used all your requests for today. Please try again in 24 hours or contact an admin if you need more requests.`);
-    return;
-  }
-
-  await setUserState(userId, 'waiting_for_location_multiple');
-  await sendMessage(botToken, chatId, 
-    `📍 <b>Find Multiple Local Medics</b>\n\nPlease enter your location (city, postal code, or address):\n\n<i>Example: London, Manchester, SW1A 1AA</i>\n\n⚡ <b>${requestsLeft - 1} requests left after this</b>`);
-}
-
-async function handleLocationQuery(botToken: string, chatId: number, userId: number, query: string, isMultiple: boolean) {
+async function handleLocationSearch(botToken: string, chatId: number, userId: number, location: string, isMultiple: boolean) {
   try {
-    // Use request
+    // Use a request
     useRequest(userId);
     
+    log('INFO', 'Processing location search', { userId, location, isMultiple });
+
     // Geocode the location
-    const location = geocodeLocation(query);
+    const geoResult = await geocodeLocation(location);
+    if (!geoResult) {
+      await sendMessage(botToken, chatId, 
+        `❌ <b>Location not found</b>\n\nSorry, we couldn't find "${location}". Please try a different location.`,
+        { reply_markup: getMainMenuKeyboard() });
+      return;
+    }
+
+    const { lat, lon, address } = geoResult;
     const count = isMultiple ? 3 : 1;
     
     // Get nearby numbers
-    const numbers = getNearbyNumbers(location.lat, location.lon, count);
+    const numbers = getNearbyNumbers(lat, lon, count);
     
     if (numbers.length === 0) {
       await sendMessage(botToken, chatId, 
-        `❌ <b>No medics found</b>\n\nSorry, we couldn't find any medics near "${query}". Please try a different location or contact an admin.`);
+        `❌ <b>No medics found</b>\n\nSorry, we couldn't find any medics near "${location}". Please try a different location.`,
+        { reply_markup: getMainMenuKeyboard() });
       return;
     }
 
     // Format results
-    let message = `📍 <b>Medics near ${location.address}</b>\n\n`;
+    let message = `📍 <b>Medics near ${address}</b>\n\n`;
     
     numbers.forEach((number, index) => {
       message += `<b>${index + 1}. ${number.name}</b>\n`;
-      message += `📞 ${number.phone}\n`;
+      message += `📞 <code>${number.phone}</code>\n`;
       if (number.category) {
         message += `🏥 ${number.category}\n`;
       }
@@ -411,24 +479,59 @@ async function handleLocationQuery(botToken: string, chatId: number, userId: num
     });
 
     message += `<i>⚠️ For emergencies, always call 999 (UK) or 911 (US)</i>\n`;
-    message += `<i>🔄 Use /number or /numbers to search again</i>`;
+    message += `<i>� Tap the phone numbers to copy them</i>`;
 
-    await sendMessage(botToken, chatId, message);
-
-    // Clear user state
-    await clearUserState(userId);
+    await sendMessage(botToken, chatId, message, { reply_markup: getMainMenuKeyboard() });
     
   } catch (error) {
-    log('ERROR', 'Failed to handle location query', { error: error.message, query });
+    log('ERROR', 'Failed to handle location search', { error: error.message, location });
     await sendMessage(botToken, chatId, 
-      `❌ <b>Search failed</b>\n\nSorry, there was an error processing your request. Please try again or contact an admin.`);
-    await clearUserState(userId);
+      `❌ <b>Search failed</b>\n\nSorry, there was an error processing your request. Please try again.`,
+      { reply_markup: getMainMenuKeyboard() });
+  }
+}
+
+// Callback query handler
+async function handleCallbackQuery(botToken: string, callbackQuery: any) {
+  const chatId = callbackQuery.message.chat.id;
+  const userId = callbackQuery.from.id;
+  const firstName = callbackQuery.from.first_name || "Friend";
+  const data = callbackQuery.data;
+
+  log('INFO', 'Processing callback query', { userId, data });
+
+  await answerCallbackQuery(botToken, callbackQuery.id);
+
+  if (data === 'action_start') {
+    await handleStart(botToken, chatId, firstName, userId);
+  } else if (data === 'action_help') {
+    await handleHelp(botToken, chatId);
+  } else if (data === 'action_invite') {
+    await handleInvite(botToken, chatId);
+  } else if (data === 'action_number') {
+    await handleNumberSearch(botToken, chatId, userId, false);
+  } else if (data === 'action_numbers') {
+    await handleNumberSearch(botToken, chatId, userId, true);
+  } else if (data.startsWith('location_')) {
+    const parts = data.split('_');
+    if (parts.length >= 3) {
+      const location = parts.slice(1, -1).join('_');
+      const isMultiple = parts[parts.length - 1] === 'multiple';
+      
+      if (location === 'custom') {
+        const searchType = isMultiple ? "multiple medics" : "a single medic";
+        await sendMessage(botToken, chatId, 
+          `📍 <b>Custom Location Search</b>\n\nPlease type your location to find ${searchType}:\n\n<i>Example: SW1A 1AA, Paris France, etc.</i>`,
+          { reply_markup: getMainMenuKeyboard() });
+      } else {
+        await handleLocationSearch(botToken, chatId, userId, location, isMultiple);
+      }
+    }
   }
 }
 
 // Main request handler
 async function handleRequest(request: Request): Promise<Response> {
-  // Handle CORS preflight
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -444,9 +547,18 @@ async function handleRequest(request: Request): Promise<Response> {
     }
 
     const body: TelegramUpdate = await request.json();
-    log('INFO', 'Received update', { message_id: body.message?.message_id });
+    log('INFO', 'Received update', { 
+      message_id: body.message?.message_id,
+      callback_query_id: body.callback_query?.id 
+    });
 
-    // Only process text messages
+    // Handle callback queries (button presses)
+    if (body.callback_query) {
+      await handleCallbackQuery(botToken, body.callback_query);
+      return new Response("OK", { headers: corsHeaders });
+    }
+
+    // Handle text messages
     if (!body.message?.text) {
       return new Response("OK", { headers: corsHeaders });
     }
@@ -459,44 +571,32 @@ async function handleRequest(request: Request): Promise<Response> {
 
     log('INFO', 'Processing message', { userId, chatId, text: text.substring(0, 50) });
 
-    // Check if user is in a conversation state
-    const userState = await getUserState(userId);
-    
-    if (userState === 'waiting_for_location_single') {
-      await handleLocationQuery(botToken, chatId, userId, text, false);
-      return new Response("OK", { headers: corsHeaders });
-    }
-    
-    if (userState === 'waiting_for_location_multiple') {
-      await handleLocationQuery(botToken, chatId, userId, text, true);
-      return new Response("OK", { headers: corsHeaders });
-    }
-
     // Handle commands
-    switch (text) {
-      case CONFIG.COMMANDS.START:
-        await handleStart(botToken, chatId, firstName, userId);
-        break;
-        
-      case CONFIG.COMMANDS.HELP:
-        await handleHelp(botToken, chatId);
-        break;
-        
-      case CONFIG.COMMANDS.INVITE:
-        await handleInvite(botToken, chatId);
-        break;
-        
-      case CONFIG.COMMANDS.NUMBER:
-        await handleNumber(botToken, chatId, userId);
-        break;
-        
-      case CONFIG.COMMANDS.NUMBERS:
-        await handleNumbers(botToken, chatId, userId);
-        break;
-        
-      default:
-        await sendMessage(botToken, chatId, 
-          `❓ <b>Unknown command</b>\n\nI didn't understand that command. Use /help to see available commands.`);
+    if (text.startsWith('/')) {
+      switch (text) {
+        case CONFIG.COMMANDS.START:
+          await handleStart(botToken, chatId, firstName, userId);
+          break;
+        case CONFIG.COMMANDS.HELP:
+          await handleHelp(botToken, chatId);
+          break;
+        case CONFIG.COMMANDS.INVITE:
+          await handleInvite(botToken, chatId);
+          break;
+        case CONFIG.COMMANDS.NUMBER:
+          await handleNumberSearch(botToken, chatId, userId, false);
+          break;
+        case CONFIG.COMMANDS.NUMBERS:
+          await handleNumberSearch(botToken, chatId, userId, true);
+          break;
+        default:
+          await sendMessage(botToken, chatId, 
+            `❓ <b>Unknown command</b>\n\nI didn't understand that command. Use the menu below or /help for available commands.`,
+            { reply_markup: getMainMenuKeyboard() });
+      }
+    } else {
+      // Handle location input (assume single search by default)
+      await handleLocationSearch(botToken, chatId, userId, text, false);
     }
 
     return new Response("OK", { headers: corsHeaders });
