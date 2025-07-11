@@ -355,44 +355,92 @@ async function findClosestNumbers(
   limit: number = 1
 ): Promise<NumberSearchResult[]> {
   try {
-    // This is a simplified implementation
-    // In production, you would use PostGIS or similar for proper geospatial queries
+    // Query medical contacts from database
     const { data, error } = await supabase
-      .from('phone_numbers')
+      .from('medical_contacts')
       .select(`
-        phone_number,
-        user_name,
+        name,
+        phone,
+        specialty,
+        address,
         latitude,
-        longitude
+        longitude,
+        is_emergency,
+        region_locations!inner (
+          location_name,
+          regions!inner (
+            country_name
+          )
+        )
       `)
       .eq('is_active', true)
-      .limit(limit);
+      .order('is_emergency', { ascending: false })
+      .limit(limit * 2); // Get more to filter by distance
 
     if (error) {
-      console.error('Error finding phone numbers:', error);
-      return [];
+      console.error('Error finding medical contacts:', error);
+      return getFallbackContacts(lat, lon, limit);
     }
 
     if (!data || data.length === 0) {
-      return [];
+      return getFallbackContacts(lat, lon, limit);
     }
 
-    // Calculate distances and sort (simplified calculation)
-    const results = data.map(entry => ({
-      phone_number: entry.phone_number,
-      user_name: entry.user_name || 'User',
-      latitude: entry.latitude,
-      longitude: entry.longitude,
-      distance_km: Math.sqrt(
-        Math.pow(entry.latitude - lat, 2) + Math.pow(entry.longitude - lon, 2)
-      ) * 111 // Rough conversion to km
-    }));
+    // Calculate distances and sort
+    const results = data
+      .filter(contact => contact.latitude && contact.longitude)
+      .map(contact => ({
+        phone_number: contact.phone,
+        user_name: contact.name,
+        latitude: contact.latitude!,
+        longitude: contact.longitude!,
+        distance_km: calculateDistance(lat, lon, contact.latitude!, contact.longitude!),
+        specialty: contact.specialty || 'Medical Services',
+        location: contact.region_locations?.location_name || 'Unknown'
+      }))
+      .sort((a, b) => a.distance_km! - b.distance_km!)
+      .slice(0, limit);
 
-    return results.sort((a, b) => a.distance_km! - b.distance_km!);
+    return results;
   } catch (error) {
     console.error('Error in findClosestNumbers:', error);
-    return [];
+    return getFallbackContacts(lat, lon, limit);
   }
+}
+
+// Fallback contacts when database is unavailable
+function getFallbackContacts(lat: number, lon: number, limit: number = 1): NumberSearchResult[] {
+  const fallbackContacts = [
+    // North East - Updated with specific requirements
+    { phone_number: '+44 799 9877582', user_name: 'Top Shagger NE', latitude: 54.9783, longitude: -1.6178, specialty: 'Medical Supplies 11am-12pm', location: 'Newcastle upon Tyne' },
+    { phone_number: '+44 799 1234567', user_name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, specialty: 'Medical Supplies 10am-11am', location: 'Durham' },
+    { phone_number: '+44 799 7654321', user_name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, specialty: 'Medical Supplies 1pm-2pm', location: 'Sunderland' },
+    { phone_number: '+44 799 1122334', user_name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, specialty: 'Medical Supplies 3pm-4pm', location: 'Middlesbrough' },
+    
+    // Other UK locations
+    { phone_number: '+44 7700 900123', user_name: 'Dr. Sarah Johnson', latitude: 51.5074, longitude: -0.1278, specialty: 'Emergency Medicine', location: 'London' },
+    { phone_number: '+44 7700 900321', user_name: 'Dr. James Brown', latitude: 53.4808, longitude: -2.2426, specialty: 'Pediatrics', location: 'Manchester' },
+  ];
+
+  return fallbackContacts
+    .map(contact => ({
+      ...contact,
+      distance_km: calculateDistance(lat, lon, contact.latitude, contact.longitude)
+    }))
+    .sort((a, b) => a.distance_km! - b.distance_km!)
+    .slice(0, limit);
+}
+
+// Helper function to calculate distance
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 // Send Telegram message
@@ -661,7 +709,7 @@ Here is 1 number near: ${address}
 
 // Handler: Process location query for multiple numbers
 async function handleMultipleNumbersQuery(
-  supabase: Supabase Client,
+  supabase: SupabaseClient,
   telegramBotToken: string,
   message: TelegramMessage,
   stateManager: UserStateManager

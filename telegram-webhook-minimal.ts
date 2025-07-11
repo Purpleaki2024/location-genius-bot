@@ -63,18 +63,32 @@ function geocodeAddress(address: string) {
   return locations.london;
 }
 
-// Get sample phone numbers near location
+// Get sample phone numbers near location with updated North East data
 function getNearbyNumbers(lat: number, lon: number, limit = 1) {
-  // Sample data - replace with real database query
+  // Updated sample data with North East medical contacts
   const sampleNumbers = [
-    { phone: '+44 7700 900123', name: 'John Smith', lat: 51.5074, lon: -0.1278 },
-    { phone: '+44 7700 900456', name: 'Sarah Johnson', lat: 51.5074, lon: -0.1278 },
-    { phone: '+44 7700 900789', name: 'Mike Davis', lat: 51.5074, lon: -0.1278 },
-    { phone: '+1 555 123 4567', name: 'Alex Wilson', lat: 40.7128, lon: -74.0060 },
-    { phone: '+1 555 987 6543', name: 'Emma Brown', lat: 40.7128, lon: -74.0060 },
+    // North East - Updated with specific requirements
+    { phone: '+44 799 9877582', name: 'Top Shagger NE', lat: 54.9783, lon: -1.6178, city: 'Newcastle upon Tyne' },
+    { phone: '+44 799 1234567', name: 'Durham Medics', lat: 54.7761, lon: -1.5733, city: 'Durham' },
+    { phone: '+44 799 7654321', name: 'Sunderland Health', lat: 54.9069, lon: -1.3838, city: 'Sunderland' },
+    { phone: '+44 799 1122334', name: 'Middlesbrough Care', lat: 54.5742, lon: -1.2351, city: 'Middlesbrough' },
+    
+    // Other UK locations  
+    { phone: '+44 7700 900123', name: 'John Smith', lat: 51.5074, lon: -0.1278, city: 'London' },
+    { phone: '+44 7700 900456', name: 'Sarah Johnson', lat: 51.5074, lon: -0.1278, city: 'London' },
+    { phone: '+44 7700 900789', name: 'Mike Davis', lat: 51.5074, lon: -0.1278, city: 'London' },
+    { phone: '+1 555 123 4567', name: 'Alex Wilson', lat: 40.7128, lon: -74.0060, city: 'New York' },
+    { phone: '+1 555 987 6543', name: 'Emma Brown', lat: 40.7128, lon: -74.0060, city: 'New York' },
   ];
   
-  // Simple distance calculation (replace with proper PostGIS query)
+  // Simple distance calculation - prioritize North East for relevant locations
+  const isNorthEastLocation = lat > 54 && lat < 56 && lon > -3 && lon < 0; // Rough North East bounds
+  
+  if (isNorthEastLocation) {
+    // Return North East contacts first for locations in that region
+    return sampleNumbers.filter(num => num.city.includes('Newcastle') || num.city.includes('Durham') || num.city.includes('Sunderland') || num.city.includes('Middlesbrough')).slice(0, limit);
+  }
+  
   return sampleNumbers.slice(0, limit);
 }
 
@@ -161,14 +175,28 @@ async function handleLocationQuery(botToken: string, message: any) {
   }
   
   const number = numbers[0];
+  const isNorthEastSpecial = ['Top Shagger NE', 'Durham Medics', 'Sunderland Health', 'Middlesbrough Care'].includes(number.name);
+  
+  let specialMessage = '';
+  if (isNorthEastSpecial) {
+    if (number.name === 'Top Shagger NE') {
+      specialMessage = '\n⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them';
+    } else if (number.name === 'Durham Medics') {
+      specialMessage = '\n⚠️ Start message with "Dr. Smith recommended you"\nTap the phone numbers to copy them';
+    } else if (number.name === 'Sunderland Health') {
+      specialMessage = '\n⚠️ Start message with "Nurse Jane referred you"\nTap the phone numbers to copy them';
+    } else if (number.name === 'Middlesbrough Care') {
+      specialMessage = '\n⚠️ Start message with "Dr. Brown sent you"\nTap the phone numbers to copy them';
+    }
+  }
+  
   const reply = `Hello ${userName},
 
 Here is 1 number near: ${geoResult.address}
 
 ⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
 <b>${number.name}</b>
-<a href='tel:${number.phone}'>${number.phone}</a>
-🔒 Start your message on WhatsApp with password NIGELLA to get the full menu
+<a href='tel:${number.phone}'>${number.phone}</a>${specialMessage || '\n🔒 Start your message on WhatsApp with password NIGELLA to get the full menu'}
 ⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
 
 ✂️ Tap the number to copy
@@ -204,7 +232,23 @@ async function handleNumbersQuery(botToken: string, message: any) {
   
   let numbersSection = "";
   for (const number of numbers) {
-    numbersSection += `⭐️ ${number.name}\nPhone: ${number.phone}\n🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n`;
+    const isNorthEastSpecial = ['Top Shagger NE', 'Durham Medics', 'Sunderland Health', 'Middlesbrough Care'].includes(number.name);
+    
+    numbersSection += `⭐️ ${number.name}\nPhone: ${number.phone}\n`;
+    
+    if (isNorthEastSpecial) {
+      if (number.name === 'Top Shagger NE') {
+        numbersSection += `⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them\n\n`;
+      } else if (number.name === 'Durham Medics') {
+        numbersSection += `⚠️ Start message with "Dr. Smith recommended you"\nTap the phone numbers to copy them\n\n`;
+      } else if (number.name === 'Sunderland Health') {
+        numbersSection += `⚠️ Start message with "Nurse Jane referred you"\nTap the phone numbers to copy them\n\n`;
+      } else if (number.name === 'Middlesbrough Care') {
+        numbersSection += `⚠️ Start message with "Dr. Brown sent you"\nTap the phone numbers to copy them\n\n`;
+      }
+    } else {
+      numbersSection += `🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n`;
+    }
   }
   
   const reply = `Hello ${userName},

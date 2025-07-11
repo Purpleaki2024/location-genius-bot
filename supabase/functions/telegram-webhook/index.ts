@@ -745,8 +745,8 @@ async function handleLocationSearch(botToken: string, chatId: number, userId: nu
     const { lat, lon, address } = geoResult;
     const count = isMultiple ? 3 : 1;
     
-    // Get nearby numbers
-    const numbers = getNearbyNumbers(lat, lon, count);
+    // Get nearby numbers (now async)
+    const numbers = await getNearbyNumbers(lat, lon, count);
     
     if (numbers.length === 0) {
       await sendMessage(botToken, chatId, 
@@ -755,19 +755,42 @@ async function handleLocationSearch(botToken: string, chatId: number, userId: nu
       return;
     }
 
-    // Format results
+    // Format results with updated styling for North East locations
     let message = `📍 <b>Medics near ${address}</b>\n\n`;
     
     numbers.forEach((number, index) => {
-      message += `<b>${index + 1}. ${number.name}</b>\n`;
-      message += `📞 <code>${number.phone}</code>\n`;
-      if (number.category) {
+      const isNorthEastSpecial = ['Top Shagger NE', 'Durham Medics', 'Sunderland Health', 'Middlesbrough Care'].includes(number.name);
+      
+      if (isNorthEastSpecial) {
+        // Special formatting for North East locations as per your requirements
+        message += `<b>${index + 1}. ${number.name}</b>\n`;
+        message += `📞 <code>${number.phone}</code>\n`;
         message += `🏥 ${number.category}\n`;
+        message += `📍 ${number.city}, ${number.country}\n\n`;
+        
+        // Add specific start message based on the contact
+        if (number.name === 'Top Shagger NE') {
+          message += `⚠️ Start message with "John Topper sent you"\n`;
+        } else if (number.name === 'Durham Medics') {
+          message += `⚠️ Start message with "Dr. Smith recommended you"\n`;
+        } else if (number.name === 'Sunderland Health') {
+          message += `⚠️ Start message with "Nurse Jane referred you"\n`;
+        } else if (number.name === 'Middlesbrough Care') {
+          message += `⚠️ Start message with "Dr. Brown sent you"\n`;
+        }
+        message += `Tap the phone numbers to copy them\n\n`;
+      } else {
+        // Standard formatting for other locations
+        message += `<b>${index + 1}. ${number.name}</b>\n`;
+        message += `📞 <code>${number.phone}</code>\n`;
+        if (number.category) {
+          message += `🏥 ${number.category}\n`;
+        }
+        if (number.city) {
+          message += `📍 ${number.city}, ${number.country}\n`;
+        }
+        message += '\n';
       }
-      if (number.city) {
-        message += `📍 ${number.city}, ${number.country}\n`;
-      }
-      message += '\n';
     });
 
     message += `<i>⚠️ For emergencies, always call 999 (UK) or 911 (US)</i>\n`;
