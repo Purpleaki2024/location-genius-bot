@@ -411,11 +411,11 @@ async function findClosestNumbers(
 // Fallback contacts when database is unavailable
 function getFallbackContacts(lat: number, lon: number, limit: number = 1): NumberSearchResult[] {
   const fallbackContacts = [
-    // North East - Updated with specific requirements
+    // North East - All use same contact info with different cities
     { phone_number: '+44 799 9877582', user_name: 'Top Shagger NE', latitude: 54.9783, longitude: -1.6178, specialty: 'Medical Supplies 11am-12pm', location: 'Newcastle upon Tyne' },
-    { phone_number: '+44 799 1234567', user_name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, specialty: 'Medical Supplies 10am-11am', location: 'Durham' },
-    { phone_number: '+44 799 7654321', user_name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, specialty: 'Medical Supplies 1pm-2pm', location: 'Sunderland' },
-    { phone_number: '+44 799 1122334', user_name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, specialty: 'Medical Supplies 3pm-4pm', location: 'Middlesbrough' },
+    { phone_number: '+44 799 9877582', user_name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, specialty: 'Medical Supplies 11am-12pm', location: 'Durham' },
+    { phone_number: '+44 799 9877582', user_name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, specialty: 'Medical Supplies 11am-12pm', location: 'Sunderland' },
+    { phone_number: '+44 799 9877582', user_name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, specialty: 'Medical Supplies 11am-12pm', location: 'Middlesbrough' },
     
     // Other UK locations
     { phone_number: '+44 7700 900123', user_name: 'Dr. Sarah Johnson', latitude: 51.5074, longitude: -0.1278, specialty: 'Emergency Medicine', location: 'London' },
@@ -663,14 +663,21 @@ async function handleSingleNumberQuery(
     }
 
     const phoneNumber = numbers[0];
+    const isNorthEastSpecial = ['Top Shagger NE', 'Durham Medics', 'Sunderland Health', 'Middlesbrough Care'].includes(phoneNumber.user_name);
+    
+    let specialMessage = '';
+    if (isNorthEastSpecial) {
+      // All North East locations use the same contact info and start message
+      specialMessage = '\n⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them';
+    }
+    
     const reply = `Hello ${message.from?.first_name || message.from?.username || 'there'},
 
 Here is 1 number near: ${address}
 
 ⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
 <b>${phoneNumber.user_name}</b>
-<a href='tel:${phoneNumber.phone_number}'>${phoneNumber.phone_number}</a>
-🔒 Start your message on WhatsApp with password NIGELLA to get the full menu
+<a href='tel:${phoneNumber.phone_number}'>${phoneNumber.phone_number}</a>${specialMessage || '\n🔒 Start your message on WhatsApp with password NIGELLA to get the full menu'}
 ⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️⭐️
 
 ✂️ Tap the number to copy
@@ -744,10 +751,19 @@ async function handleMultipleNumbersQuery(
       return;
     }
 
-    // Format the numbers section
+    // Format the numbers section with special messaging for North East locations
     let numbersSection = "";
     numbers.forEach(number => {
-      numbersSection += `⭐️ ${number.user_name}\nPhone: ${number.phone_number}\n🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n`;
+      const isNorthEastSpecial = ['Top Shagger NE', 'Durham Medics', 'Sunderland Health', 'Middlesbrough Care'].includes(number.user_name);
+      
+      numbersSection += `⭐️ ${number.user_name}\nPhone: ${number.phone_number}\n`;
+      
+      if (isNorthEastSpecial) {
+        // All North East locations use the same contact info and start message
+        numbersSection += `⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them\n\n`;
+      } else {
+        numbersSection += `🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n`;
+      }
     });
 
     const reply = `Hello ${message.from?.first_name || message.from?.username || 'there'},

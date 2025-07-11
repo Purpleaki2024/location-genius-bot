@@ -179,15 +179,8 @@ async function handleLocationQuery(botToken: string, message: any) {
   
   let specialMessage = '';
   if (isNorthEastSpecial) {
-    if (number.name === 'Top Shagger NE') {
-      specialMessage = '\n⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them';
-    } else if (number.name === 'Durham Medics') {
-      specialMessage = '\n⚠️ Start message with "Dr. Smith recommended you"\nTap the phone numbers to copy them';
-    } else if (number.name === 'Sunderland Health') {
-      specialMessage = '\n⚠️ Start message with "Nurse Jane referred you"\nTap the phone numbers to copy them';
-    } else if (number.name === 'Middlesbrough Care') {
-      specialMessage = '\n⚠️ Start message with "Dr. Brown sent you"\nTap the phone numbers to copy them';
-    }
+    // All North East locations use the same contact info and start message
+    specialMessage = '\n⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them';
   }
   
   const reply = `Hello ${userName},
@@ -237,15 +230,8 @@ async function handleNumbersQuery(botToken: string, message: any) {
     numbersSection += `⭐️ ${number.name}\nPhone: ${number.phone}\n`;
     
     if (isNorthEastSpecial) {
-      if (number.name === 'Top Shagger NE') {
-        numbersSection += `⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them\n\n`;
-      } else if (number.name === 'Durham Medics') {
-        numbersSection += `⚠️ Start message with "Dr. Smith recommended you"\nTap the phone numbers to copy them\n\n`;
-      } else if (number.name === 'Sunderland Health') {
-        numbersSection += `⚠️ Start message with "Nurse Jane referred you"\nTap the phone numbers to copy them\n\n`;
-      } else if (number.name === 'Middlesbrough Care') {
-        numbersSection += `⚠️ Start message with "Dr. Brown sent you"\nTap the phone numbers to copy them\n\n`;
-      }
+      // All North East locations use the same contact info and start message
+      numbersSection += `⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them\n\n`;
     } else {
       numbersSection += `🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n`;
     }

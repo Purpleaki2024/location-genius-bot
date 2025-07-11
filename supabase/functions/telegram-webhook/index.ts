@@ -358,11 +358,11 @@ async function getNearbyNumbers(lat: number, lon: number, count: number = 1): Pr
 // Fallback function with sample data
 function getFallbackNumbers(lat: number, lon: number, count: number = 1): PhoneNumberEntry[] {
   const sampleNumbers: PhoneNumberEntry[] = [
-    // North East - Updated with your specific requirements
+    // North East - All use same contact info with different cities
     { phone: '+44 799 9877582', name: 'Top Shagger NE', latitude: 54.9783, longitude: -1.6178, city: 'Newcastle upon Tyne', country: 'UK', category: 'Medical Supplies 11am-12pm' },
-    { phone: '+44 799 1234567', name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, city: 'Durham', country: 'UK', category: 'Medical Supplies 10am-11am' },
-    { phone: '+44 799 7654321', name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, city: 'Sunderland', country: 'UK', category: 'Medical Supplies 1pm-2pm' },
-    { phone: '+44 799 1122334', name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, city: 'Middlesbrough', country: 'UK', category: 'Medical Supplies 3pm-4pm' },
+    { phone: '+44 799 9877582', name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, city: 'Durham', country: 'UK', category: 'Medical Supplies 11am-12pm' },
+    { phone: '+44 799 9877582', name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, city: 'Sunderland', country: 'UK', category: 'Medical Supplies 11am-12pm' },
+    { phone: '+44 799 9877582', name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, city: 'Middlesbrough', country: 'UK', category: 'Medical Supplies 11am-12pm' },
     
     // Other UK cities
     { phone: '+44 7700 900123', name: 'Dr. Sarah Johnson', latitude: 51.5074, longitude: -0.1278, city: 'London', country: 'UK', category: 'Emergency Medicine' },
@@ -768,16 +768,8 @@ async function handleLocationSearch(botToken: string, chatId: number, userId: nu
         message += `🏥 ${number.category}\n`;
         message += `📍 ${number.city}, ${number.country}\n\n`;
         
-        // Add specific start message based on the contact
-        if (number.name === 'Top Shagger NE') {
-          message += `⚠️ Start message with "John Topper sent you"\n`;
-        } else if (number.name === 'Durham Medics') {
-          message += `⚠️ Start message with "Dr. Smith recommended you"\n`;
-        } else if (number.name === 'Sunderland Health') {
-          message += `⚠️ Start message with "Nurse Jane referred you"\n`;
-        } else if (number.name === 'Middlesbrough Care') {
-          message += `⚠️ Start message with "Dr. Brown sent you"\n`;
-        }
+        // All North East locations use the same start message
+        message += `⚠️ Start message with "John Topper sent you"\n`;
         message += `Tap the phone numbers to copy them\n\n`;
       } else {
         // Standard formatting for other locations

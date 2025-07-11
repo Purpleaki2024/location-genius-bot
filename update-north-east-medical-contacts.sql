@@ -1,5 +1,5 @@
--- Update North East Medical Contacts with unique details for each town
--- This script adds medical contacts for Newcastle, Sunderland, Middlesbrough, and Durham
+-- Update North East Medical Contacts with same contact info but different cities
+-- All North East locations use the same contact details with "John Topper sent you" message
 
 -- First, get the region and location IDs we need
 WITH region_data AS (
@@ -21,6 +21,7 @@ clear_existing AS (
   RETURNING 1
 )
 -- Insert new medical contacts for each North East location
+-- All use the same contact details but with different city names
 INSERT INTO medical_contacts (
   region_id, 
   location_id, 
@@ -36,40 +37,35 @@ INSERT INTO medical_contacts (
 SELECT 
   rd.region_id,
   rd.location_id,
-  contact_data.name,
-  contact_data.phone,
-  contact_data.specialty,
-  contact_data.address,
-  contact_data.latitude,
-  contact_data.longitude,
-  contact_data.is_emergency,
+  CASE 
+    WHEN rd.location_name = 'Newcastle' THEN 'Top Shagger NE'
+    WHEN rd.location_name = 'Durham' THEN 'Durham Medics'
+    WHEN rd.location_name = 'Sunderland' THEN 'Sunderland Health'
+    WHEN rd.location_name = 'Middlesbrough' THEN 'Middlesbrough Care'
+  END as name,
+  '+44 799 9877582' as phone, -- Same phone number for all
+  'Medical Supplies 11am-12pm' as specialty, -- Same specialty for all
+  CASE 
+    WHEN rd.location_name = 'Newcastle' THEN 'Newcastle upon Tyne, Tyne and Wear, UK'
+    WHEN rd.location_name = 'Durham' THEN 'Durham, County Durham, UK'
+    WHEN rd.location_name = 'Sunderland' THEN 'Sunderland, Tyne and Wear, UK'
+    WHEN rd.location_name = 'Middlesbrough' THEN 'Middlesbrough, North Yorkshire, UK'
+  END as address,
+  CASE 
+    WHEN rd.location_name = 'Newcastle' THEN 54.9783
+    WHEN rd.location_name = 'Durham' THEN 54.7761
+    WHEN rd.location_name = 'Sunderland' THEN 54.9069
+    WHEN rd.location_name = 'Middlesbrough' THEN 54.5742
+  END as latitude,
+  CASE 
+    WHEN rd.location_name = 'Newcastle' THEN -1.6178
+    WHEN rd.location_name = 'Durham' THEN -1.5733
+    WHEN rd.location_name = 'Sunderland' THEN -1.3838
+    WHEN rd.location_name = 'Middlesbrough' THEN -1.2351
+  END as longitude,
+  false as is_emergency,
   true as is_active
-FROM region_data rd
-CROSS JOIN (
-  -- Newcastle upon Tyne contacts
-  SELECT 'Newcastle' as location_name, 'Top Shagger NE' as name, '+44 799 9877582' as phone, 'Medical Supplies' as specialty, 'Newcastle upon Tyne, Tyne and Wear, UK' as address, 54.9783 as latitude, -1.6178 as longitude, false as is_emergency
-  UNION ALL
-  SELECT 'Newcastle', 'Dr. James Newcastle', '+44 799 1111111', 'Emergency Medicine', 'Central Newcastle, Tyne and Wear, UK', 54.9783, -1.6178, true
-  
-  -- Sunderland contacts  
-  UNION ALL
-  SELECT 'Sunderland', 'Sunderland Health', '+44 799 7654321', 'Medical Supplies', 'Sunderland, Tyne and Wear, UK', 54.9069, -1.3838, false
-  UNION ALL
-  SELECT 'Sunderland', 'Dr. Sarah Sunderland', '+44 799 2222222', 'General Practice', 'City Centre, Sunderland, UK', 54.9069, -1.3838, false
-  
-  -- Middlesbrough contacts
-  UNION ALL
-  SELECT 'Middlesbrough', 'Middlesbrough Care', '+44 799 1122334', 'Medical Supplies', 'Middlesbrough, North Yorkshire, UK', 54.5742, -1.2351, false
-  UNION ALL
-  SELECT 'Middlesbrough', 'Dr. Michael Middlesbrough', '+44 799 3333333', 'Cardiology', 'Central Middlesbrough, UK', 54.5742, -1.2351, false
-  
-  -- Durham contacts
-  UNION ALL
-  SELECT 'Durham', 'Durham Medics', '+44 799 1234567', 'Medical Supplies', 'Durham, County Durham, UK', 54.7761, -1.5733, false
-  UNION ALL
-  SELECT 'Durham', 'Dr. Emily Durham', '+44 799 4444444', 'Pediatrics', 'Durham City Centre, UK', 54.7761, -1.5733, false
-) contact_data
-WHERE rd.location_name = contact_data.location_name;
+FROM region_data rd;
 
 -- Verify the insertions
 SELECT 
