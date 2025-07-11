@@ -67,11 +67,11 @@ function geocodeAddress(address: string) {
 function getNearbyNumbers(lat: number, lon: number, limit = 1) {
   // Updated sample data with North East medical contacts
   const sampleNumbers = [
-    // North East - Updated with specific requirements
+    // North East - All use same contact info with different cities
     { phone: '+44 799 9877582', name: 'Top Shagger NE', lat: 54.9783, lon: -1.6178, city: 'Newcastle upon Tyne' },
-    { phone: '+44 799 1234567', name: 'Durham Medics', lat: 54.7761, lon: -1.5733, city: 'Durham' },
-    { phone: '+44 799 7654321', name: 'Sunderland Health', lat: 54.9069, lon: -1.3838, city: 'Sunderland' },
-    { phone: '+44 799 1122334', name: 'Middlesbrough Care', lat: 54.5742, lon: -1.2351, city: 'Middlesbrough' },
+    { phone: '+44 799 9877582', name: 'Durham Medics', lat: 54.7761, lon: -1.5733, city: 'Durham' },
+    { phone: '+44 799 9877582', name: 'Sunderland Health', lat: 54.9069, lon: -1.3838, city: 'Sunderland' },
+    { phone: '+44 799 9877582', name: 'Middlesbrough Care', lat: 54.5742, lon: -1.2351, city: 'Middlesbrough' },
     
     // Other UK locations  
     { phone: '+44 7700 900123', name: 'John Smith', lat: 51.5074, lon: -0.1278, city: 'London' },
