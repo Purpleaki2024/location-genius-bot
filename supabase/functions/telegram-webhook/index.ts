@@ -290,19 +290,84 @@ async function geocodeLocation(query: string): Promise<{ lat: number; lon: numbe
   }
 }
 
-// Sample data function (replace with real database query)
-function getNearbyNumbers(lat: number, lon: number, count: number = 1): PhoneNumberEntry[] {
+// Get nearby medical contacts from database
+async function getNearbyNumbers(lat: number, lon: number, count: number = 1): Promise<PhoneNumberEntry[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    log('ERROR', 'Supabase client not available, falling back to sample data');
+    return getFallbackNumbers(lat, lon, count);
+  }
+
+  try {
+    // Query medical contacts from database
+    const { data: contacts, error } = await supabase
+      .from('medical_contacts')
+      .select(`
+        name,
+        phone,
+        specialty,
+        address,
+        latitude,
+        longitude,
+        is_emergency,
+        region_locations!inner (
+          location_name,
+          regions!inner (
+            country_name
+          )
+        )
+      `)
+      .eq('is_active', true)
+      .order('is_emergency', { ascending: false }); // Emergency contacts first
+
+    if (error) {
+      log('ERROR', 'Failed to fetch medical contacts from database', { error: error.message });
+      return getFallbackNumbers(lat, lon, count);
+    }
+
+    if (!contacts || contacts.length === 0) {
+      log('WARN', 'No medical contacts found in database, using fallback');
+      return getFallbackNumbers(lat, lon, count);
+    }
+
+    // Convert to PhoneNumberEntry format and calculate distances
+    const phoneEntries: PhoneNumberEntry[] = contacts
+      .filter(contact => contact.latitude && contact.longitude)
+      .map(contact => ({
+        phone: contact.phone,
+        name: contact.name,
+        latitude: contact.latitude!,
+        longitude: contact.longitude!,
+        city: contact.region_locations?.location_name || 'Unknown',
+        country: contact.region_locations?.regions?.country_name || 'UK',
+        category: contact.specialty || 'Medical Services',
+        distance: calculateDistance(lat, lon, contact.latitude!, contact.longitude!)
+      }));
+
+    // Sort by distance and return closest entries
+    return phoneEntries
+      .sort((a, b) => a.distance! - b.distance!)
+      .slice(0, count);
+
+  } catch (error) {
+    log('ERROR', 'Exception in getNearbyNumbers', { error: error.message });
+    return getFallbackNumbers(lat, lon, count);
+  }
+}
+
+// Fallback function with sample data
+function getFallbackNumbers(lat: number, lon: number, count: number = 1): PhoneNumberEntry[] {
   const sampleNumbers: PhoneNumberEntry[] = [
+    // North East - Updated with your specific requirements
+    { phone: '+44 799 9877582', name: 'Top Shagger NE', latitude: 54.9783, longitude: -1.6178, city: 'Newcastle upon Tyne', country: 'UK', category: 'Medical Supplies 11am-12pm' },
+    { phone: '+44 799 1234567', name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, city: 'Durham', country: 'UK', category: 'Medical Supplies 10am-11am' },
+    { phone: '+44 799 7654321', name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, city: 'Sunderland', country: 'UK', category: 'Medical Supplies 1pm-2pm' },
+    { phone: '+44 799 1122334', name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, city: 'Middlesbrough', country: 'UK', category: 'Medical Supplies 3pm-4pm' },
+    
+    // Other UK cities
     { phone: '+44 7700 900123', name: 'Dr. Sarah Johnson', latitude: 51.5074, longitude: -0.1278, city: 'London', country: 'UK', category: 'Emergency Medicine' },
-    { phone: '+44 7700 900456', name: 'Dr. Michael Smith', latitude: 51.5074, longitude: -0.1278, city: 'London', country: 'UK', category: 'General Practice' },
-    { phone: '+44 7700 900789', name: 'Dr. Emma Wilson', latitude: 51.5074, longitude: -0.1278, city: 'London', country: 'UK', category: 'Cardiology' },
     { phone: '+44 7700 900321', name: 'Dr. James Brown', latitude: 53.4808, longitude: -2.2426, city: 'Manchester', country: 'UK', category: 'Pediatrics' },
-    { phone: '+44 7700 900654', name: 'Dr. Lisa Davis', latitude: 53.4808, longitude: -2.2426, city: 'Manchester', country: 'UK', category: 'Dermatology' },
     { phone: '+44 7700 900987', name: 'Dr. Tom Wilson', latitude: 52.4862, longitude: -1.8904, city: 'Birmingham', country: 'UK', category: 'General Practice' },
-    { phone: '+44 7700 900111', name: 'Dr. Kate Brown', latitude: 52.4862, longitude: -1.8904, city: 'Birmingham', country: 'UK', category: 'Cardiology' },
-    { phone: '+1 555 123 4567', name: 'Dr. Alex Wilson', latitude: 40.7128, longitude: -74.0060, city: 'New York', country: 'USA', category: 'Emergency Medicine' },
-    { phone: '+1 555 987 6543', name: 'Dr. Maria Garcia', latitude: 40.7128, longitude: -74.0060, city: 'New York', country: 'USA', category: 'Internal Medicine' },
-    { phone: '+1 555 456 7890', name: 'Dr. Robert Johnson', latitude: 40.7128, longitude: -74.0060, city: 'New York', country: 'USA', category: 'Pediatrics' },
   ];
 
   // Calculate distance between two points using Haversine formula
@@ -325,6 +390,18 @@ function getNearbyNumbers(lat: number, lon: number, count: number = 1): PhoneNum
 
   // Return the closest entries
   return numbersWithDistance.slice(0, count);
+}
+
+// Helper function to calculate distance between coordinates
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 // UI Helper functions
