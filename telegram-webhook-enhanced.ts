@@ -411,11 +411,11 @@ async function findClosestNumbers(
 // Fallback contacts when database is unavailable
 function getFallbackContacts(lat: number, lon: number, limit: number = 1): NumberSearchResult[] {
   const fallbackContacts = [
-    // North East - All use same contact info with different cities
+    // North East - Updated with specific requirements
     { phone_number: '+44 799 9877582', user_name: 'Top Shagger NE', latitude: 54.9783, longitude: -1.6178, specialty: 'Medical Supplies 11am-12pm', location: 'Newcastle upon Tyne' },
-    { phone_number: '+44 799 9877582', user_name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, specialty: 'Medical Supplies 11am-12pm', location: 'Durham' },
-    { phone_number: '+44 799 9877582', user_name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, specialty: 'Medical Supplies 11am-12pm', location: 'Sunderland' },
-    { phone_number: '+44 799 9877582', user_name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, specialty: 'Medical Supplies 11am-12pm', location: 'Middlesbrough' },
+    { phone_number: '+44 799 1234567', user_name: 'Durham Medics', latitude: 54.7761, longitude: -1.5733, specialty: 'Medical Supplies 10am-11am', location: 'Durham' },
+    { phone_number: '+44 799 7654321', user_name: 'Sunderland Health', latitude: 54.9069, longitude: -1.3838, specialty: 'Medical Supplies 1pm-2pm', location: 'Sunderland' },
+    { phone_number: '+44 799 1122334', user_name: 'Middlesbrough Care', latitude: 54.5742, longitude: -1.2351, specialty: 'Medical Supplies 3pm-4pm', location: 'Middlesbrough' },
     
     // Other UK locations
     { phone_number: '+44 7700 900123', user_name: 'Dr. Sarah Johnson', latitude: 51.5074, longitude: -0.1278, specialty: 'Emergency Medicine', location: 'London' },
@@ -667,8 +667,15 @@ async function handleSingleNumberQuery(
     
     let specialMessage = '';
     if (isNorthEastSpecial) {
-      // All North East locations use the same contact info and start message
-      specialMessage = '\n⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them';
+      if (phoneNumber.user_name === 'Top Shagger NE') {
+        specialMessage = '\n⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them';
+      } else if (phoneNumber.user_name === 'Durham Medics') {
+        specialMessage = '\n⚠️ Start message with "Dr. Smith recommended you"\nTap the phone numbers to copy them';
+      } else if (phoneNumber.user_name === 'Sunderland Health') {
+        specialMessage = '\n⚠️ Start message with "Nurse Jane referred you"\nTap the phone numbers to copy them';
+      } else if (phoneNumber.user_name === 'Middlesbrough Care') {
+        specialMessage = '\n⚠️ Start message with "Dr. Brown sent you"\nTap the phone numbers to copy them';
+      }
     }
     
     const reply = `Hello ${message.from?.first_name || message.from?.username || 'there'},
@@ -759,8 +766,15 @@ async function handleMultipleNumbersQuery(
       numbersSection += `⭐️ ${number.user_name}\nPhone: ${number.phone_number}\n`;
       
       if (isNorthEastSpecial) {
-        // All North East locations use the same contact info and start message
-        numbersSection += `⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them\n\n`;
+        if (number.user_name === 'Top Shagger NE') {
+          numbersSection += `⚠️ Start message with "John Topper sent you"\nTap the phone numbers to copy them\n\n`;
+        } else if (number.user_name === 'Durham Medics') {
+          numbersSection += `⚠️ Start message with "Dr. Smith recommended you"\nTap the phone numbers to copy them\n\n`;
+        } else if (number.user_name === 'Sunderland Health') {
+          numbersSection += `⚠️ Start message with "Nurse Jane referred you"\nTap the phone numbers to copy them\n\n`;
+        } else if (number.user_name === 'Middlesbrough Care') {
+          numbersSection += `⚠️ Start message with "Dr. Brown sent you"\nTap the phone numbers to copy them\n\n`;
+        }
       } else {
         numbersSection += `🔒 Start your message on WhatsApp with password NIGELLA to get the full menu\n\n`;
       }
