@@ -91,13 +91,94 @@ const userStates = new Map<number, string>();
 // Rate limiting storage
 const userRequests = new Map<number, { count: number; lastReset: number }>();
 
+// Database-first helper functions
+async function shouldUseDatabase(): Promise<boolean> {
+  try {
+    const useDatabase = (globalThis as any).Deno?.env?.get("USE_DATABASE");
+    return useDatabase === "true";
+  } catch {
+    return false;
+  }
+}
+
+async function getRegionsFromDatabase(): Promise<Region[]> {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('regions')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.error('Database error fetching regions:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching regions from database:', error);
+    return [];
+  }
+}
+
+async function getLocationsByRegionFromDatabase(regionId: string): Promise<RegionLocation[]> {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('region_locations')
+      .select('*')
+      .eq('region_id', regionId)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.error('Database error fetching locations:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching locations from database:', error);
+    return [];
+  }
+}
+
+async function getMedicalContactsByLocationFromDatabase(locationId: string): Promise<MedicalContact[]> {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+      .from('medical_contacts')
+      .select('*')
+      .eq('location_id', locationId)
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Database error fetching medical contacts:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching medical contacts from database:', error);
+    return [];
+  }
+}
+
 // Supabase client for state management
 let supabaseClient: any = null;
 
 function getSupabaseClient() {
   if (!supabaseClient) {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseUrl = (globalThis as any).Deno?.env?.get("SUPABASE_URL");
+    const supabaseKey = (globalThis as any).Deno?.env?.get("SUPABASE_ANON_KEY");
     if (supabaseUrl && supabaseKey) {
       supabaseClient = createClient(supabaseUrl, supabaseKey);
     }
@@ -347,11 +428,11 @@ function getCountrySelectionKeyboard() {
   return {
     inline_keyboard: [
       [
-        { text: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 England", callback_data: "country_england" },
-        { text: "🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland", callback_data: "country_scotland" }
+        { text: "🏴 England", callback_data: "country_england" },
+        { text: "🏴 Scotland", callback_data: "country_scotland" }
       ],
       [
-        { text: "🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales", callback_data: "country_wales" },
+        { text: "🏴 Wales", callback_data: "country_wales" },
         { text: "🇮🇪 Ireland", callback_data: "country_ireland" }
       ],
       [
@@ -797,7 +878,7 @@ async function handleRequest(request: Request): Promise<Response> {
   }
 
   try {
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const botToken = (globalThis as any).Deno?.env?.get("TELEGRAM_BOT_TOKEN");
     if (!botToken) {
       throw new Error("TELEGRAM_BOT_TOKEN not configured");
     }
